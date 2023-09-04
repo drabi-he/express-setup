@@ -49,13 +49,13 @@ Its intended to be used as a template for future projects. as well as have many 
 
 ## Simple Express Server With Typescript
 
-1. initialize a  new project
+  - 1. initialize a  new project
 
-  mkdir backend && cd backend
+    mkdir backend && cd backend
 
-  pnpm init
+    pnpm init
 
-2. go to your `package.json` file and add the following to your `scripts` object
+  - 2. go to your `package.json` file and add the following to your `scripts` object
 
     "build": "npx tsc",
     "start": "node dist/main.js",
