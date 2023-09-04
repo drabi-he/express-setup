@@ -12,6 +12,7 @@ Its intended to be used as a template for future projects. as well as have many 
 
 ## Project Structure
 
+```
   -- [folder name]\ (i usually choose backend or server)
     -- tools\ (contain your scripts certificates ... )
     -- uploads\ (if you have any kind of upload service it would be best to direct all of them to this folder and make it static)
@@ -30,6 +31,7 @@ Its intended to be used as a template for future projects. as well as have many 
       -- utils\
       -- [...]
     -- [...]
+```
 
 > :warning: **Your `tools` Folder And `.env` file may contain very sensitive information so you should always add them to your `.gitignore` file**
 
@@ -134,7 +136,7 @@ Its intended to be used as a template for future projects. as well as have many 
     });
     process.exit(1);
   }
-  
+
   export const environment: {
     nodeEnv: string;
     port: number;
