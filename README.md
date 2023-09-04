@@ -125,8 +125,16 @@ Its intended to be used as a template for future projects. as well as have many 
 
   import { config } from "dotenv-safest";
 
-  config();
-
+  try {
+    config();
+  } catch (e: any) {
+    console.log({
+      message: "Error loading environment variables",
+      missing: e?.missing,
+    });
+    process.exit(1);
+  }
+  
   export const environment: {
     nodeEnv: string;
     port: number;
@@ -134,6 +142,7 @@ Its intended to be used as a template for future projects. as well as have many 
     nodeEnv: process.env.NODE_ENV || "development",
     port: parseInt(process.env.PORT || "3000"),
   };
+
 
 19. go to your `main.ts` file and add the following
 

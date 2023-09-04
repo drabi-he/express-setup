@@ -1,6 +1,14 @@
 import { config } from "dotenv-safest";
 
-config();
+try {
+  config();
+} catch (e: any) {
+  console.log({
+    message: "Error loading environment variables",
+    missing: e?.missing,
+  });
+  process.exit(1);
+}
 
 export const environment: {
   nodeEnv: string;
