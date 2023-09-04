@@ -12,26 +12,26 @@ Its intended to be used as a template for future projects. as well as have many 
 
 ## Project Structure
 
-```
-  -- [folder name]\ (i usually choose backend or server)
-    -- tools\ (contain your scripts certificates ... )
-    -- uploads\ (if you have any kind of upload service it would be best to direct all of them to this folder and make it static)
-    -- .env (contain your sensitive information such as API Keys, Secrets ...)
-    -- .env.example (contain the keys to your `.env` file variables)
-    -- .gitignore (contain files and folder that shouldn't be pushed to your remote repository)
-    -- src\ (contains all your logic)
-      -- main.ts (this is where you start your server)
-      -- common\
-      -- config\
-      -- middleware\
-      -- routes\
-      -- models\
-        -- index.ts (this is optional but it will make it easier to import all your models)
+
+    -- [folder name]\ (i usually choose backend or server)
+      -- tools\ (contain your scripts certificates ... )
+      -- uploads\ (if you have any kind of upload service it would be best to direct all of them to this folder and make it static)
+      -- .env (contain your sensitive information such as API Keys, Secrets ...)
+      -- .env.example (contain the keys to your `.env` file variables)
+      -- .gitignore (contain files and folder that shouldn't be pushed to your remote repository)
+      -- src\ (contains all your logic)
+        -- main.ts (this is where you start your server)
+        -- common\
+        -- config\
+        -- middleware\
+        -- routes\
+        -- models\
+          -- index.ts (this is optional but it will make it easier to import all your models)
+          -- [...]
+        -- utils\
         -- [...]
-      -- utils\
       -- [...]
-    -- [...]
-```
+
 
 > :warning: **Your `tools` Folder And `.env` file may contain very sensitive information so you should always add them to your `.gitignore` file**
 
@@ -61,120 +61,122 @@ Its intended to be used as a template for future projects. as well as have many 
     "start": "node dist/main.js",
     "dev": "npx tsc && concurrently \"tsc -w\" \"nodemon dist/main.js\""
 
-3. change the `main` property to `dist/main.js`
+**3. change the `main` property to `dist/main.js`**
 
-4. add dependencies/packages
+**4. add dependencies/packages
 
-  pnpm add express dotenv-safest cors
+    pnpm add express dotenv-safest cors**
 
 - `express`: is a web framework for nodejs that makes it easier to create a server and handle requests and responses
 - `dotenv-safest`: is a package that helps you load your environment variables from a `.env` file
 - `cors`: is a package that helps you handle cors errors
 
-5. add dev dependency this include type definitions to avoid any errors
+**5. add dev dependency this include type definitions to avoid any errors**
 
-  pnpm add -D typescript ts-node nodemon concurrently @types/express @types/cors @types/node
+    pnpm add -D typescript ts-node nodemon concurrently @types/express @types/cors @types/node
 
 > :bulb: **Some Packages Includes their type definitions by default so you won't need to add any as dev dependency**
+
 > :bulb: **check [npmjs.com](www.npmjs.com) to find if a package include a type Definition or not**
-> :bulb: **if you see `DT` beside it's name then it needs a type definition, if you see `TS` beside it's name then it's already included**
 
-6. extra packages that may be helpful
+> :bulb: **if you see `DT` beside it's name then it needs a type definition, if you see `TS` beside it's name then it's already included
 
-  pnpm add -D morgan @types/morgan
+**6. extra packages that may be helpful**
 
-`morgan`: is a logger middleware for express 
+    pnpm add -D morgan @types/morgan
 
-7. setup typescript
+- `morgan`: is a logger middleware for express 
 
-  npx tsc --init
+**7. setup typescript**
 
-8. `tsconfig.json` file configuration
+    npx tsc --init
 
-  line 58 `"outDir": "./dist",`
+**8. `tsconfig.json` file configuration**
 
-9. create a `.gitignore` file
+    line 58 `"outDir": "./dist",`
 
-  touch .gitignore
+**9. create a `.gitignore` file**
 
-10. add the following to your `.gitignore` file
+    touch .gitignore
 
-  node_modules/
-  dist
-  .env
+**10. add the following to your `.gitignore` file**
 
-11. create a `.env` file
+    node_modules/
+    dist
+    .env
 
-  touch .env
+**11. create a `.env` file**
 
-12. add the following to your `.env` file
+    touch .env
 
-  NODE_ENV=development
-  PORT=3000
+**12. add the following to your `.env` file**
 
-14. create a `.env.example` file
+    NODE_ENV=development
+    PORT=3000
 
-  touch .env.example
+**14. create a `.env.example` file**
 
-15. add the following to your `.env.example` file
+    touch .env.example
 
-  NODE_ENV=
-  PORT=
+**15. add the following to your `.env.example` file**
 
-16. create you project structure as you see fit or follow the one in this repository
+    NODE_ENV=
+    PORT=
 
-  mkdir -p src/{common,config,middleware,routes,models,utils} tools uploads && touch src/main.ts
+**16. create you project structure as you see fit or follow the one in this repository**
 
-17. create an `environment.ts` file in your `config` folder
+    mkdir -p src/{common,config,middleware,routes,models,utils} tools uploads && touch src/main.ts
 
-  touch src/config/environment.ts
+**17. create an `environment.ts` file in your `config` folder**
 
-18. add the following to your `environment.ts` file
+    touch src/config/environment.ts
 
-  import { config } from "dotenv-safest";
+**18. add the following to your `environment.ts` file**
 
-  try {
-    config();
-  } catch (e: any) {
-    console.log({
-      message: "Error loading environment variables",
-      missing: e?.missing,
+    import { config } from "dotenv-safest";
+  
+    try {
+      config();
+    } catch (e: any) {
+      console.log({
+        message: "Error loading environment variables",
+        missing: e?.missing,
+      });
+      process.exit(1);
+    }
+  
+    export const environment: {
+      nodeEnv: string;
+      port: number;
+    } = {
+      nodeEnv: process.env.NODE_ENV || "development",
+      port: parseInt(process.env.PORT || "3000"),
+    };
+
+
+**19. go to your `main.ts` file and add the following**
+
+    import express from "express";
+    import cors from "cors";
+    import { environment } from "./config/environment";
+    import morgan from "morgan"; // optional
+  
+    const app = express();
+  
+    app.use(cors());
+    app.use(express.json());
+    app.use(express.urlencoded({ extended: true }));
+    app.use(morgan("dev")); // optional
+  
+    app.get("/", (req, res) => {
+      res.send("Hello World");
     });
-    process.exit(1);
-  }
+  
+    app.listen(environment.port, () => {
+      console.log(`Server is running on port ${environment.port}`);
+    });
 
-  export const environment: {
-    nodeEnv: string;
-    port: number;
-  } = {
-    nodeEnv: process.env.NODE_ENV || "development",
-    port: parseInt(process.env.PORT || "3000"),
-  };
-
-
-19. go to your `main.ts` file and add the following
-
-  import express from "express";
-  import cors from "cors";
-  import { environment } from "./config/environment";
-  import morgan from "morgan"; // optional
-
-  const app = express();
-
-  app.use(cors());
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
-  app.use(morgan("dev")); // optional
-
-  app.get("/", (req, res) => {
-    res.send("Hello World");
-  });
-
-  app.listen(environment.port, () => {
-    console.log(`Server is running on port ${environment.port}`);
-  });
-
-20. run your server
+**20. run your server**
   
     pnpm run dev
 
