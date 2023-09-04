@@ -35,13 +35,19 @@ Its intended to be used as a template for future projects. as well as have many 
 
 > :warning: **Your `tools` Folder And `.env` file may contain very sensitive information so you should always add them to your `.gitignore` file**
 
-## commands
+## Useful commands
 
+- `pnpm init`: initialize a new project (you can use `npm init` or `yarn init` if you don't use `pnpm`)
+- `pnpm add [package name]`: add a package to your project  (you can use `npm install [package name]` or `yarn add [package name]` if you don't use `pnpm`)
+- `pnpm add -D [package name]`: add a dev dependency to your project  (you can use `npm install -D [package name]` or `yarn add -D [package name]` if you don't use `pnpm`)
+- `pnpm run [script name]`: run a script from your `package.json` file (you can use `npm run [script name]` or `yarn run [script name]` if you don't use `pnpm`)
 
 
 ## Table Of Contents
 
-[Simple Express Server With Typescript]()
+[Simple Express Server With Typescript](https://github.com/drabi-he/express-setup#simple-express-server-with-typescript)
+
+## Simple Express Server With Typescript
 
 1. initialize a  new project
 
@@ -61,9 +67,9 @@ Its intended to be used as a template for future projects. as well as have many 
 
   pnpm add express dotenv-safest cors
 
-`express`: is a web framework for nodejs that makes it easier to create a server and handle requests and responses
-`dotenv-safest`: is a package that helps you load your environment variables from a `.env` file
-`cors`: is a package that helps you handle cors errors
+- `express`: is a web framework for nodejs that makes it easier to create a server and handle requests and responses
+- `dotenv-safest`: is a package that helps you load your environment variables from a `.env` file
+- `cors`: is a package that helps you handle cors errors
 
 5. add dev dependency this include type definitions to avoid any errors
 
