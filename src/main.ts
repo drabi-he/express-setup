@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import { dbConnect } from "./config/database";
 import { environment } from "./config/environment";
 import { requestInfo, responseInfo, logger } from "./config/logger";
 
@@ -20,6 +21,14 @@ app.get("/", (req, res) => {
   res.send("Hello World");
 });
 
-app.listen(environment.port, () => {
-  logger.info(`Server is running on port ${environment.port}`);
-});
+dbConnect(environment.mongoUrl)
+  .then(() => {
+    logger.info("Connected to database");
+    app.listen(environment.port, () => {
+      logger.info(`Server is running on port ${environment.port}`);
+    });
+  })
+  .catch((err) => {
+    logger.error(err);
+    process.exit(1);
+  });

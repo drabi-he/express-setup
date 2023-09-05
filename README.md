@@ -46,6 +46,7 @@ Its intended to be used as a template for future projects. as well as have many 
 ## Table Of Contents
 
 [Simple Express Server With Typescript](https://github.com/drabi-he/express-setup#simple-express-server-with-typescript)
+[using mongodb with mongoose](https://github.com/drabi-he/express-setup/tree/mongodb#using-mongodb-with-mongoose)
 
 ## Simple Express Server With Typescript
 
@@ -199,8 +200,138 @@ Its intended to be used as a template for future projects. as well as have many 
 
 congratulations you have created your first express server with typescript
 
+## Using MongoDB With Mongoose
+
+**1. prepare your docker compose file**
+
+    touch docker-compose.yml
+
+**2. update your `.env` file to include mongodb variables**
+
+    echo "MONGO_INITDB_ROOT_USERNAME=admin" >> .env
+    echo "MONGO_INITDB_ROOT_PASSWORD=secret" >> .env
+    echo "MONGO_URL=mongodb://admin:secret@localhost:27017/mydb?authSource=admin" >> .env
+
+**3. update your `.env.example` file to include mongodb variables**
+
+    echo "MONGO_INITDB_ROOT_USERNAME=" >> .env.example
+    echo "MONGO_INITDB_ROOT_PASSWORD=" >> .env.example
+    echo "MONGO_URL=" >> .env.example
+
+**4. add the following to your `docker-compose.yml` file**
+
+    version: "3.8"
+    services:
+      mongo:
+        image: mongo
+        restart: always
+        ports:
+          - 27017:27017
+        volumes:
+          - ./data:/data/db
+        environment:
+          - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+          - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+    
+      mongo-express:
+        image: mongo-express
+        restart: always
+        ports:
+          - 8081:8081
+        environment:
+          - ME_CONFIG_MONGODB_SERVER=mongo
+          - ME_CONFIG_MONGODB_ADMINUSERNAME=${MONGO_INITDB_ROOT_USERNAME}
+          - ME_CONFIG_MONGODB_ADMINPASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+
+**5. run your docker compose file**
+
+    docker compose up --build
+    #OR
+    docker-compose up --build
+
+**6. add the following to your `.gitignore` file**
+
+    echo "data" >> .gitignore
+
+**7. install mongoose**
+
+    pnpm add mongoose
+
+**8. update your `config/environment.ts` file**
+
+    import { config } from "dotenv-safest";
+  
+    try {
+      config();
+    } catch (e: any) {
+      console.log({
+        message: "Error loading environment variables",
+        missing: e?.missing,
+      });
+      process.exit(1);
+    }
+  
+    export const environment: {
+      nodeEnv: string;
+      port: number;
+      mongoUrl: string;
+    } = {
+      nodeEnv: process.env.NODE_ENV || "development",
+      port: parseInt(process.env.PORT || "3000"),
+      mongoUrl: process.env.MONGO_URL || "",
+    };
+
+**8. create a `database.ts` file in your `config` folder**
+
+    touch src/config/database.ts
+
+**9. add the following to your `database.ts` file**
+
+    import mongoose from "mongoose";
+
+    export const dbConnect = mongoose.connect;
+
+**10. update your `main.ts` file**
+
+    import express from "express";
+    import cors from "cors";
+    import { dbConnect } from "./config/database";
+    import { environment } from "./config/environment";
+    import { requestInfo, responseInfo, logger } from "./config/logger";
+
+    const app = express();
+
+    app.use(cors());
+    app.use(express.json());
+    app.use(express.urlencoded({ extended: true }));
+    app.use(requestInfo);
+    app.use(responseInfo);
+
+    app.use((req, res, next) => {
+      logger.info(`${req.method} ${req.url}`);
+      next();
+    });
+
+    app.get("/", (req, res) => {
+      res.send("Hello World");
+    });
+
+    dbConnect(environment.mongoUrl)
+      .then(() => {
+        logger.info("Connected to database");
+        app.listen(environment.port, () => {
+          logger.info(`Server is running on port ${environment.port}`);
+        });
+      })
+      .catch((err) => {
+        logger.error(err);
+        process.exit(1);
+      });
+
+
+
 
 > :bulb: **You Can Use This Command to help you setup the project
 ```bash
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/drabi-he/express-setup/master/setup.sh)"
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/drabi-he/express-setup/mongodb/setup.sh)"
 ```

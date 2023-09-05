@@ -99,19 +99,23 @@ else
   install="add"
 fi
 
-if "$manager" "$install" express dotenv-safest cors ; then
-  echo "express, dotenv-safest, cors installed successfully"
+packages="express dotenv-safest cors mongoose"
+
+if "$manager" "$install" $packages ; then
+  echo "$packages installed successfully"
 else
-  echo "Error: express, dotenv-safest, cors installation failed." >&2
+  echo "Error: $packages installation failed." >&2
     rm -rf ../"$name"
   exit 1
 fi
 
+devPackages="typescript ts-node @types/node @types/express @types/cors nodemon concurrently morgan @types/morgan"
+
 # Package Dev Dependencies
-if "$manager" "$install" -D typescript ts-node @types/node @types/express @types/cors nodemon concurrently morgan @types/morgan; then
-  echo "typescript, @types/node, @types/express, @types/dotenv, @types/cors, nodemon, concurrently installed successfully"
+if "$manager" "$install" -D $devPackages; then
+  echo "$devPackages installed successfully"
 else
-  echo "Error: typescript, @types/node, @types/express, @types/dotenv, @types/cors, nodemon, concurrently installation failed." >&2
+  echo "Error: $devPackages installation failed." >&2
     rm -rf ../"$name"
   exit 1
 fi
@@ -125,17 +129,8 @@ else
   exit 1
 fi
 
-# Git Config
-if touch .gitignore && echo "node_modules" >> .gitignore && echo ".env" >> .gitignore && echo "dist" >> .gitignore; then
-  echo ".gitignore created successfully"
-else
-  echo "Error: .gitignore creation failed." >&2
-    rm -rf ../"$name"
-  exit 1
-fi
-
 # Env Config
-if touch .env && echo "NODE_ENV=development" > .env && echo "PORT=3000" >> .env; then
+if touch .env && echo "NODE_ENV=development" > .env && echo "PORT=3000" >> .env && echo "MONGO_INITDB_ROOT_USERNAME=admin" >> .env && echo "MONGO_INITDB_ROOT_PASSWORD=secret" >> .env && echo "MONGO_URL=mongodb://admin:secret@localhost:27017/mydb?authSource=admin" >> .env ; then
   echo ".env created successfully"
 else
   echo "Error: .env creation failed." >&2
@@ -144,13 +139,64 @@ else
 fi
 
 # Env Example Config
-if touch .env.example && echo "NODE_ENV=" > .env.example && echo "PORT=" >> .env.example; then
+if touch .env.example && echo "NODE_ENV=" > .env.example && echo "PORT=" >> .env.example && echo "MONGO_INITDB_ROOT_USERNAME=" >> .env.example && echo "MONGO_INITDB_ROOT_PASSWORD=" >> .env.example && echo "MONGO_URL=" >> .env.example; then
   echo ".env.example created successfully"
 else
   echo "Error: .env.example creation failed." >&2
     rm -rf ../"$name"
   exit 1
 fi
+
+# Docker Compose Config
+
+if touch docker-compose.yml && echo 'version: "3.8"
+services:
+  mongo:
+    image: mongo
+    restart: always
+    ports:
+      - 27017:27017
+    volumes:
+      - ./data:/data/db
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+
+  mongo-express:
+    image: mongo-express
+    restart: always
+    ports:
+      - 8081:8081
+    environment:
+      - ME_CONFIG_MONGODB_SERVER=mongo
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+' > docker-compose.yml; then
+  echo "docker-compose.yml created successfully"
+else
+  echo "Error: docker-compose.yml creation failed." >&2
+    rm -rf ../"$name"
+  exit 1
+fi
+
+# Run Docker Compose
+if docker compose up --build -d; then
+  echo "docker-compose up successfully"
+else
+  echo "Error: docker-compose up failed." >&2
+    rm -rf ../"$name"
+  exit 1
+fi
+
+# Git Config
+if touch .gitignore && echo "node_modules" >> .gitignore && echo ".env" >> .gitignore && echo "dist" >> .gitignore && echo "data" >> .gitignore ; then
+  echo ".gitignore created successfully"
+else
+  echo "Error: .gitignore creation failed." >&2
+    rm -rf ../"$name"
+  exit 1
+fi
+
 
 # Folder Structure
 mkdir -p src/config src/common src/middlewares src/models src/routes src/utils 
@@ -173,9 +219,11 @@ try {
 export const environment: {
   nodeEnv: string;
   port: number;
+  mongoUrl: string;
 } = {
   nodeEnv: process.env.NODE_ENV || "development",
   port: parseInt(process.env.PORT || "3000"),
+  mongoUrl: process.env.MONGO_URL || "",
 };' > config/environment.ts; then
   echo "config/environment.ts created successfully"
 else
@@ -201,9 +249,23 @@ else
   exit 1
 fi
 
+# Database Config
+
+if touch config/database.ts && echo 'import mongoose from "mongoose";
+    import { environment } from "./environment";
+
+    export const dbConnect = mongoose.connect;' > config/database.ts; then
+  echo "config/database.ts created successfully"
+else
+  echo "Error: config/database.ts creation failed." >&2
+    rm -rf ../"$name"
+  exit 1
+fi
+
 # Main File
 if touch main.ts && echo 'import express from "express";
     import cors from "cors";
+    import { dbConnect } from "./config/database";
     import { environment } from "./config/environment";
     import { requestInfo, responseInfo } from "./config/logger"; // optional
 
@@ -219,9 +281,17 @@ if touch main.ts && echo 'import express from "express";
       res.send("Hello World");
     });
 
-    app.listen(environment.port, () => {
-      console.log(`Server is running on port ${environment.port}`);
-    });' > main.ts; then
+    dbConnect(environment.mongoUrl)
+      .then(() => {
+        console.log("Connected to database");
+        app.listen(environment.port, () => {
+          console.log(`Server is running on port ${environment.port}`);
+        });
+      })
+      .catch((err) => {
+        console.error(err);
+        process.exit(1);
+      });' > main.ts; then
   echo "main.ts created successfully"
 else
   echo "Error: main.ts creation failed." >&2
