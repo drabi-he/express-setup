@@ -1,5 +1,6 @@
 #!/bin/sh
 
+# Folder Name
 read -p "Enter root folder name [backend]: " name
 name=${name:-backend}
 echo "$name"
@@ -17,6 +18,7 @@ if ! [ -x "$(command -v node)" ]; then
   exit 1
 fi
 
+# Package Manager
 read -p "Which package manager would you like to use (npm/yarn/pnpm) [npm]: " manager
 manager=${manager:-npm}
 echo "$manager"
@@ -55,6 +57,7 @@ else
   fi
 fi
 
+# Package Name
 if sed -i 's/"main": "index.js"/"main": "dist\/main.js"/g' package.json; then
   echo "package.json main updated successfully"
 else
@@ -63,12 +66,13 @@ else
   exit 1
 fi
 
+# Package Scripts
 if [ "$manager" = "yarn" ]; then 
   if sed -i 's/"license": "MIT"/"license": "MIT",\
   "scripts": {\
-    "build": "tsc",\
+    "build": "npx tsc",\
     "start": "node dist\/main.js",\
-    "dev": "tsc -w \&\& concurrently \\"tsc -w\\" \\"nodemon dist\/main.js\\""\
+    "dev": "npx tsc \&\& concurrently \\"tsc -w\\" \\"nodemon dist\/main.js\\""\
   }/g' package.json; then
     echo "package.json scripts updated successfully"
   else
@@ -88,6 +92,7 @@ else
   fi
 fi
 
+# Package Dependencies
 if [ "$manager" = "npm" ]; then
   install="install"
 else
@@ -102,6 +107,7 @@ else
   exit 1
 fi
 
+# Package Dev Dependencies
 if "$manager" "$install" -D typescript ts-node @types/node @types/express @types/cors nodemon concurrently morgan @types/morgan; then
   echo "typescript, @types/node, @types/express, @types/dotenv, @types/cors, nodemon, concurrently installed successfully"
 else
@@ -110,6 +116,7 @@ else
   exit 1
 fi
 
+# Typescript Config
 if npx tsc --init --outDir dist; then
   echo "tsconfig.json created successfully"
 else
@@ -118,6 +125,7 @@ else
   exit 1
 fi
 
+# Git Config
 if touch .gitignore && echo "node_modules" >> .gitignore && echo ".env" >> .gitignore && echo "dist" >> .gitignore; then
   echo ".gitignore created successfully"
 else
@@ -126,6 +134,7 @@ else
   exit 1
 fi
 
+# Env Config
 if touch .env && echo "NODE_ENV=development" > .env && echo "PORT=3000" >> .env; then
   echo ".env created successfully"
 else
@@ -134,6 +143,7 @@ else
   exit 1
 fi
 
+# Env Example Config
 if touch .env.example && echo "NODE_ENV=" > .env.example && echo "PORT=" >> .env.example; then
   echo ".env.example created successfully"
 else
@@ -142,10 +152,12 @@ else
   exit 1
 fi
 
+# Folder Structure
 mkdir -p src/config src/common src/middlewares src/models src/routes src/utils 
 
 cd src
 
+# Environment Config
 if touch config/environment.ts && echo 'import { config } from "dotenv-safest";
 
 try {
@@ -172,17 +184,36 @@ else
   exit 1
 fi
 
+# Logger Config
+if touch config/logger.ts && echo 'import morgan from "morgan";
+
+    export const requestInfo = morgan(
+      "[:date[iso] :remote-addr] Started :method :url"
+    )
+
+    export const responseInfo = morgan(
+      "[:date[iso] :remote-addr] Completed :status :res[content-length] in :response-time ms"
+    )' > config/logger.ts; then
+  echo "config/logger.ts created successfully"
+else
+  echo "Error: config/logger.ts creation failed." >&2
+    rm -rf ../"$name"
+  exit 1
+fi
+
+# Main File
 if touch main.ts && echo 'import express from "express";
     import cors from "cors";
     import { environment } from "./config/environment";
-    import morgan from "morgan"; // optional
+    import { requestInfo, responseInfo } from "./config/logger"; // optional
 
     const app = express();
 
     app.use(cors());
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
-    app.use(morgan("dev")); // optional
+    app.use(requestInfo); // optional
+    app.use(responseInfo); // optional
 
     app.get("/", (req, res) => {
       res.send("Hello World");
@@ -197,6 +228,8 @@ else
     rm -rf ../"$name"
   exit 1
 fi
+
+# Setup Complete
 echo ""
 echo ""
 echo "Project setup successfully"

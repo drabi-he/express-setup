@@ -153,20 +153,37 @@ Its intended to be used as a template for future projects. as well as have many 
       port: parseInt(process.env.PORT || "3000"),
     };
 
+**19. create a `logger.ts` file in your config folder**
+
+    touch src/config/logger.ts
+
+**20. add the following to your `logger.ts` file**
+
+    import morgan from "morgan";
+
+    export const requestInfo = morgan(
+      "[:date[iso] :remote-addr] Started :method :url"
+    )
+
+    export const responseInfo = morgan(
+      "[:date[iso] :remote-addr] Completed :status :res[content-length] in :response-time ms"
+    )
 
 **19. go to your `main.ts` file and add the following**
 
     import express from "express";
     import cors from "cors";
     import { environment } from "./config/environment";
-    import morgan from "morgan"; // optional
+    import { requestInfo, responseInfo } from "./config/logger"; // optional
+
 
     const app = express();
 
     app.use(cors());
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
-    app.use(morgan("dev")); // optional
+    app.use(requestInfo); // optional
+    app.use(responseInfo); // optional
 
     app.get("/", (req, res) => {
       res.send("Hello World");
@@ -183,4 +200,7 @@ Its intended to be used as a template for future projects. as well as have many 
 congratulations you have created your first express server with typescript
 
 
-> :bulb: **You Can Use This [`setup.sh`](./setup.sh) to help you setup the project
+> :bulb: **You Can Use This Command to help you setup the project
+```bash
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/drabi-he/express-setup/master/setup.sh)"
+```
