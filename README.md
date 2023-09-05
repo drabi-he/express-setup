@@ -63,7 +63,7 @@ Its intended to be used as a template for future projects. as well as have many 
 
 **3. change the `main` property to `dist/main.js`**
 
-**4. add dependencies/packages
+**4. add dependencies/packages**
 
     pnpm add express dotenv-safest cors**
 
@@ -160,18 +160,18 @@ Its intended to be used as a template for future projects. as well as have many 
     import cors from "cors";
     import { environment } from "./config/environment";
     import morgan from "morgan"; // optional
-  
+
     const app = express();
-  
+
     app.use(cors());
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
     app.use(morgan("dev")); // optional
-  
+
     app.get("/", (req, res) => {
       res.send("Hello World");
     });
-  
+
     app.listen(environment.port, () => {
       console.log(`Server is running on port ${environment.port}`);
     });
@@ -183,4 +183,4 @@ Its intended to be used as a template for future projects. as well as have many 
 congratulations you have created your first express server with typescript
 
 
-> :bulb: **You Can Use This `setup.sh` to help you setup the project
+> :bulb: **You Can Use This [`setup.sh`](./setup.sh) to help you setup the project
