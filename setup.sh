@@ -99,19 +99,23 @@ else
   install="add"
 fi
 
-if "$manager" "$install" express dotenv-safest cors ; then
-  echo "express, dotenv-safest, cors installed successfully"
+packages="express dotenv-safest cors"
+
+if "$manager" "$install" $packages ; then
+  echo "$packages installed successfully"
 else
-  echo "Error: express, dotenv-safest, cors installation failed." >&2
+  echo "Error: $packages installation failed." >&2
     rm -rf ../"$name"
   exit 1
 fi
 
+devPackages="typescript ts-node @types/node @types/express @types/cors nodemon concurrently morgan @types/morgan"
+
 # Package Dev Dependencies
-if "$manager" "$install" -D typescript ts-node @types/node @types/express @types/cors nodemon concurrently morgan @types/morgan; then
-  echo "typescript, @types/node, @types/express, @types/dotenv, @types/cors, nodemon, concurrently installed successfully"
+if "$manager" "$install" -D $devPackages; then
+  echo "$devPackages installed successfully"
 else
-  echo "Error: typescript, @types/node, @types/express, @types/dotenv, @types/cors, nodemon, concurrently installation failed." >&2
+  echo "Error: $devPackages installation failed." >&2
     rm -rf ../"$name"
   exit 1
 fi
@@ -234,6 +238,6 @@ echo ""
 echo ""
 echo "Project setup successfully"
 echo ""
-echo ""
-echo ""
-echo "Run 'cd $name && $manager dev' to start the server"
+echo "To start the server, run the following commands:"
+echo "    cd $name"
+echo "    $manager dev"

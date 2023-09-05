@@ -45,8 +45,8 @@ Its intended to be used as a template for future projects. as well as have many 
 
 ## Table Of Contents
 
-[Simple Express Server With Typescript](https://github.com/drabi-he/express-setup#simple-express-server-with-typescript)
-[using mongodb with mongoose](https://github.com/drabi-he/express-setup/tree/mongodb#using-mongodb-with-mongoose)
+- [Simple Express Server With Typescript](https://github.com/drabi-he/express-setup#simple-express-server-with-typescript)
+- [using mongodb with mongoose](https://github.com/drabi-he/express-setup/tree/mongodb#using-mongodb-with-mongoose)
 
 ## Simple Express Server With Typescript
 
@@ -201,7 +201,7 @@ Its intended to be used as a template for future projects. as well as have many 
 congratulations you have created your first express server with typescript
 
 
-> :bulb: **You Can Use This Command to help you setup the project
+> :bulb: **You Can Use This Command to help you setup the project**
 ```bash
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/drabi-he/express-setup/master/setup.sh)"
 ```
