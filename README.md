@@ -151,7 +151,7 @@ Its intended to be used as a template for future projects. as well as have many 
       port: parseInt(process.env.PORT || "3000"),
     };
 
-**19. go to your `main.ts` file and add the following**
+**17. go to your `main.ts` file and add the following**
 
     import express from "express";
     import cors from "cors";
@@ -172,7 +172,7 @@ Its intended to be used as a template for future projects. as well as have many 
       console.log(`Server is running on port ${environment.port}`);
     });
 
-**20. run your server**
+**18. run your server**
   
     pnpm run dev
 
