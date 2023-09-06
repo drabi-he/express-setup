@@ -202,7 +202,7 @@ congratulations you have created your first express server with typescript
         cb(null, "uploads");
       },
       filename: (req: Request, file, cb) => {
-        cb(null, `${Date.now()}-${file.originalname}`);
+        cb(null, `${Date.now()}-${file.originalname.replace(/\s/g, "")}`);
       },
     });
 

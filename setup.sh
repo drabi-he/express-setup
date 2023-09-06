@@ -245,7 +245,7 @@ if touch config/multer.ts && echo 'import multer from "multer";
       cb(null, "uploads/");
     },
     filename: (req: Request, file: Express.Multer.File, cb) => {
-      cb(null, file.originalname);
+      cb(null, `${Date.now()}-${file.originalname.replace(/\s/g, "")}`);
     },
   });
 
@@ -337,9 +337,10 @@ if touch main.ts && echo 'import express from "express";
     app.get("/", (req, res) => {
       res.send("Hello World");
     });
-    
-    app.post("/upload", upload.single("file"), (req, res) => {
-      res.send(`http://localhost:${environment.port}/${req.file?.path}`);
+
+    app.post("/uploads", upload.single("file"), (req, res) => {
+      res.send(`http://localhost:${environment.port}/${req.file?.filename}`);
+
     });
 
     dbConnect(environment.mongoUrl)
