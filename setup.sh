@@ -99,7 +99,7 @@ else
   install="add"
 fi
 
-packages="express dotenv-safest cors"
+packages="express dotenv-safest cors winston multer"
 
 if "$manager" "$install" $packages ; then
   echo "$packages installed successfully"
@@ -109,7 +109,7 @@ else
   exit 1
 fi
 
-devPackages="typescript ts-node @types/node @types/express @types/cors nodemon concurrently morgan @types/morgan"
+devPackages="typescript ts-node @types/node @types/express @types/cors nodemon concurrently morgan @types/morgan @types/multer"
 
 # Package Dev Dependencies
 if "$manager" "$install" -D $devPackages; then
@@ -157,7 +157,7 @@ else
 fi
 
 # Folder Structure
-mkdir -p src/config src/common src/middlewares src/models src/routes src/utils 
+mkdir -p src/config src/common src/middlewares src/models src/routes src/utils uploads
 
 cd src
 
@@ -188,15 +188,67 @@ else
   exit 1
 fi
 
+# Multer Config
+
+if touch config/multer.ts && echo 'import multer from "multer";
+  import { Request } from "express";
+
+  const storage = multer.diskStorage({
+    destination: (req: Request, file: Express.Multer.File, cb) => {
+      cb(null, "uploads/");
+    },
+    filename: (req: Request, file: Express.Multer.File, cb) => {
+      cb(null, file.originalname);
+    },
+  });
+
+  export const upload = multer({ storage: storage });
+  ' > config/multer.ts; then
+  echo "config/multer.ts created successfully"
+else
+  echo "Error: config/multer.ts creation failed." >&2
+    rm -rf ../"$name"
+  exit 1
+fi
+
 # Logger Config
 if touch config/logger.ts && echo 'import morgan from "morgan";
+    import { createLogger, format, transports } from "winston";
+
+    export const logger = createLogger({
+      level: "info",
+      format: format.combine(
+        format.timestamp({ format: "YYYY-MM-DD HH:mm:ss:ms" }),
+        format.printf(
+          (info) => `[${info.timestamp}] ${info.level}: ${info.message}`
+        )
+      ),
+      transports: [
+        new transports.Console(),
+        new transports.File({ filename: "logs/error.log", level: "error", maxsize: 5242880, maxFiles: 5
+         }),
+        new transports.File({ filename: "logs/combined.log", maxsize: 5242880, maxFiles: 5 }),
+      ],
+    });
+
+
+
+    const stream = {
+      write: (message: string) => {
+        const status = parseInt(message.split(" ")[2]);
+        if (status >= 400) logger.error(message.trim());
+        else logger.info(message.trim());
+      }
+    };
 
     export const requestInfo = morgan(
-      "[:date[iso] :remote-addr] Started :method :url"
+      "[:remote-addr] Started :method :url",
+      { stream }
     )
 
     export const responseInfo = morgan(
-      "[:date[iso] :remote-addr] Completed :status :res[content-length] in :response-time ms"
+      "[:remote-addr] Completed :status :method :url :res[content-length] in :response-time ms",
+      { stream }
     )' > config/logger.ts; then
   echo "config/logger.ts created successfully"
 else
@@ -209,22 +261,29 @@ fi
 if touch main.ts && echo 'import express from "express";
     import cors from "cors";
     import { environment } from "./config/environment";
-    import { requestInfo, responseInfo } from "./config/logger"; // optional
+    import { requestInfo, responseInfo, logger } from "./config/logger";
+    import { upload } from "./config/multer";
 
     const app = express();
 
     app.use(cors());
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
-    app.use(requestInfo); // optional
-    app.use(responseInfo); // optional
+    app.use(requestInfo);
+    app.use(responseInfo);
+    app.use(express.static("uploads"));
 
     app.get("/", (req, res) => {
       res.send("Hello World");
     });
 
+    app.post("/upload", upload.single("file"), (req, res) => {
+      res.send(`http://localhost:${environment.port}/${req.file?.path}`);
+    });
+
+
     app.listen(environment.port, () => {
-      console.log(`Server is running on port ${environment.port}`);
+      logger.info(`Server is running on port ${environment.port}`);
     });' > main.ts; then
   echo "main.ts created successfully"
 else

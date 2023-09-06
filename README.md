@@ -46,7 +46,10 @@ Its intended to be used as a template for future projects. as well as have many 
 ## Table Of Contents
 
 - [Simple Express Server With Typescript](https://github.com/drabi-he/express-setup#simple-express-server-with-typescript)
+- [Adding Useful Services/Middleware](https://github.com/drabi-he/express-setup#adding-useful-services)
 - [using mongodb with mongoose](https://github.com/drabi-he/express-setup/tree/mongodb#using-mongodb-with-mongoose)
+
+- [Script](https://github.com/drabi-he/express-setup#script)
 
 ## Simple Express Server With Typescript
 
@@ -82,57 +85,51 @@ Its intended to be used as a template for future projects. as well as have many 
 
 > :bulb: **if you see `DT` beside it's name then it needs a type definition, if you see `TS` beside it's name then it's already included
 
-**6. extra packages that may be helpful**
-
-    pnpm add -D morgan @types/morgan
-
-- `morgan`: is a logger middleware for express 
-
-**7. setup typescript**
+**6. setup typescript**
 
     npx tsc --init
 
-**8. `tsconfig.json` file configuration**
+**7. `tsconfig.json` file configuration**
 
     line 58 `"outDir": "./dist",`
 
-**9. create a `.gitignore` file**
+**8. create a `.gitignore` file**
 
     touch .gitignore
 
-**10. add the following to your `.gitignore` file**
+**9. add the following to your `.gitignore` file**
 
     node_modules/
     dist
     .env
 
-**11. create a `.env` file**
+**10. create a `.env` file**
 
     touch .env
 
-**12. add the following to your `.env` file**
+**11. add the following to your `.env` file**
 
     NODE_ENV=development
     PORT=3000
 
-**14. create a `.env.example` file**
+**12. create a `.env.example` file**
 
     touch .env.example
 
-**15. add the following to your `.env.example` file**
+**13. add the following to your `.env.example` file**
 
     NODE_ENV=
     PORT=
 
-**16. create you project structure as you see fit or follow the one in this repository**
+**14. create you project structure as you see fit or follow the one in this repository**
 
     mkdir -p src/{common,config,middleware,routes,models,utils} tools uploads && touch src/main.ts
 
-**17. create an `environment.ts` file in your `config` folder**
+**15. create an `environment.ts` file in your `config` folder**
 
     touch src/config/environment.ts
 
-**18. add the following to your `environment.ts` file**
+**16. add the following to your `environment.ts` file**
 
     import { config } from "dotenv-safest";
   
@@ -154,28 +151,11 @@ Its intended to be used as a template for future projects. as well as have many 
       port: parseInt(process.env.PORT || "3000"),
     };
 
-**19. create a `logger.ts` file in your config folder**
-
-    touch src/config/logger.ts
-
-**20. add the following to your `logger.ts` file**
-
-    import morgan from "morgan";
-
-    export const requestInfo = morgan(
-      "[:date[iso] :remote-addr] Started :method :url"
-    )
-
-    export const responseInfo = morgan(
-      "[:date[iso] :remote-addr] Completed :status :res[content-length] in :response-time ms"
-    )
-
 **19. go to your `main.ts` file and add the following**
 
     import express from "express";
     import cors from "cors";
     import { environment } from "./config/environment";
-    import { requestInfo, responseInfo } from "./config/logger"; // optional
 
 
     const app = express();
@@ -183,8 +163,6 @@ Its intended to be used as a template for future projects. as well as have many 
     app.use(cors());
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
-    app.use(requestInfo); // optional
-    app.use(responseInfo); // optional
 
     app.get("/", (req, res) => {
       res.send("Hello World");
@@ -200,6 +178,175 @@ Its intended to be used as a template for future projects. as well as have many 
 
 congratulations you have created your first express server with typescript
 
+## Adding Useful Services/Middleware
+
+### Multer
+
+**1. add the following packages**
+
+    pnpm add multer @types/multer
+
+**2. create a `multer.ts` file in your `config` folder**
+
+    touch src/config/multer.ts
+
+**3. add the following to your `multer.ts` file**
+
+    import multer from "multer";
+    import { Request } from "express";
+
+    const storage = multer.diskStorage({
+      destination: (req: Request, file, cb) => {
+        cb(null, "uploads");
+      },
+      filename: (req: Request, file, cb) => {
+        cb(null, `${Date.now()}-${file.originalname}`);
+      },
+    });
+
+    export const upload = multer({ storage });
+
+> :bulb: **you can change the `destination` and `filename` to your liking, you can also choose file size and accepted format**
+
+**4. go to your `main.ts` file and add the following**
+
+    import { upload } from "./config/multer";
+
+**5. create a `uploads.ts` file in your `routes` folder**
+
+    touch src/routes/uploads.ts
+
+**6. add the following to your `uploads.ts` file**
+
+    import { Router } from "express";
+    import { upload } from "../config/multer";
+
+    const router = Router();
+
+    router.post("/", upload.single("file"), (req, res) => {
+      res.send(req.file);
+    });
+
+    export default router;
+
+**7. go to your `main.ts` file and add the following**
+
+    import uploadRouter from "./routes/uploads";
+
+**8. go to your `main.ts` file and add the following**
+
+    app.use("/uploads", uploadRouter);
+
+**Notice:**
+
+you can use the middleware directly in your routes like this
+
+    router.post("/user", upload.single("file"), (req, res) => {
+      res.send(req.file);
+    });
+
+this way you can directly add image to your user without having to create a new route
+
+**9. go to your `main.ts` file and add the following**
+
+    app.use("/uploads", express.static("uploads"));
+
+> :bulb: **you can use [Postman](https://www.postman.com/) to test your server**
+
+### Winston
+
+**1. add the following packages**
+
+    pnpm add winston
+
+**2. create a `logger.ts` file in your `config` folder**
+
+    touch src/config/logger.ts # if it doesn't exist
+
+**3. add the following to your `logger.ts` file**
+
+    import { createLogger, format, transports } from "winston";
+
+    export const logger = createLogger({
+      level: "info",
+      format: format.combine(
+        format.timestamp({ format: "YYYY-MM-DD HH:mm:ss:ms" }),
+        format.printf(
+          (info) => `[${info.timestamp}] ${info.level}: ${info.message}`
+        )
+      ),
+      transports: [
+        new transports.Console(),
+        new transports.File({ filename: "logs/error.log", level: "error", maxsize: 5242880, maxFiles: 5
+         }),
+        new transports.File({ filename: "logs/combined.log", maxsize: 5242880, maxFiles: 5 }),
+      ],
+    });
+
+**4. go to your `main.ts` file and add the following**
+
+    import { logger } from "./config/logger";
+
+**5. now you can use `logger` anywhere in your project**
+
+    logger.info("Hello World");
+    logger.warn("Hello World");
+    logger.error("Hello World");
+
+### Morgan
+
+**1. add the following packages**
+
+    pnpm add morgan @types/morgan
+
+**2. create a `logger.ts` file in your `config` folder**
+
+    touch src/config/logger.ts
+
+**3. add the following to your `logger.ts` file**
+
+    import morgan from "morgan";
+
+    export const requestInfo = morgan(
+      "[:date[iso] :remote-addr] Started :method :url"
+    )
+
+    export const responseInfo = morgan(
+      "[:date[iso] :remote-addr] Completed :status :res[content-length] in :response-time ms"
+    )
+
+**Notice:**
+
+we can have a better logger if we combine them
+
+    const stream = {
+      write: (message: string) => {
+        const status = parseInt(message.split(" ")[2]);
+        if (status >= 400) logger.error(message.trim());
+        else logger.info(message.trim());
+      }
+    };
+
+    export const requestInfo = morgan(
+      "[:remote-addr] Started :method :url",
+      { stream }
+    )
+
+    export const responseInfo = morgan(
+      "[:remote-addr] Completed :status :res[content-length] in :response-time ms",
+      { stream }
+    )
+
+**4. go to your `main.ts` file and add the following**
+
+    import { requestInfo, responseInfo } from "./config/logger";
+
+**5. go to your `main.ts` file and add the following**
+
+    app.use(requestInfo);
+    app.use(responseInfo);
+
+## Script
 
 > :bulb: **You Can Use This Command to help you setup the project**
 ```bash

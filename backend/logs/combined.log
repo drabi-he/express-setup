@@ -1,0 +1,14 @@
+[2023-09-06 15:42:48:4248] info: Server is running on port 3000
+[2023-09-06 15:42:48:4248] info: Server is running on port 3000
+[2023-09-06 15:42:58:4258] info: [::1] Started GET /test
+[2023-09-06 15:42:58:4258] error: [::1] Completed 404 GET /test 143 in 1.981 ms
+[2023-09-06 15:43:09:439] info: [::1] Started GET /
+[2023-09-06 15:43:09:439] info: [::1] Completed 200 GET / 11 in 1.773 ms
+[2023-09-06 15:43:40:4340] info: [::1] Started POST /uploads
+[2023-09-06 15:43:40:4340] error: [::1] Completed 404 POST /uploads 147 in 0.924 ms
+[2023-09-06 15:43:53:4353] info: [::1] Started POST /upload
+[2023-09-06 15:43:53:4353] error: [::1] Completed 500 POST /upload 210 in 4.032 ms
+[2023-09-06 15:44:42:4442] info: [::1] Started POST /upload
+[2023-09-06 15:44:42:4442] info: [::1] Completed 200 POST /upload 48 in 5.662 ms
+[2023-09-06 15:44:51:4451] info: [::1] Started GET /docker-compose.yml
+[2023-09-06 15:44:51:4451] info: [::1] Completed 200 GET /docker-compose.yml 374 in 1.294 ms

@@ -1,4 +1,4 @@
-import express from "express";
+import express, { NextFunction } from "express";
 import cors from "cors";
 import { environment } from "./config/environment";
 import { requestInfo, responseInfo, logger } from "./config/logger";
