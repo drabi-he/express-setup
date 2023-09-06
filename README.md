@@ -46,7 +46,7 @@ Its intended to be used as a template for future projects. as well as have many 
 ## Table Of Contents
 
 - [Simple Express Server With Typescript](https://github.com/drabi-he/express-setup#simple-express-server-with-typescript)
-- [Adding Useful Services/Middleware](https://github.com/drabi-he/express-setup#adding-useful-services)
+- [Adding Useful Services/Middleware](https://github.com/drabi-he/express-setup#adding-useful-servicesmiddleware)
 - [using mongodb with mongoose](https://github.com/drabi-he/express-setup/tree/mongodb#using-mongodb-with-mongoose)
 
 - [Script](https://github.com/drabi-he/express-setup#script)

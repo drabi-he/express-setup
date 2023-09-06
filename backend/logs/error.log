@@ -1,3 +1,0 @@
-[2023-09-06 15:42:58:4258] error: [::1] Completed 404 GET /test 143 in 1.981 ms
-[2023-09-06 15:43:40:4340] error: [::1] Completed 404 POST /uploads 147 in 0.924 ms
-[2023-09-06 15:43:53:4353] error: [::1] Completed 500 POST /upload 210 in 4.032 ms
