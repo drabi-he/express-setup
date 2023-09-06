@@ -9,6 +9,7 @@ Its intended to be used as a template for future projects. as well as have many 
 
 - `NodeJS`
 - NPM or Yarn or `PNPM` (I use PNPM)
+- Docker & Docker Compose 
 
 ## Project Structure
 
