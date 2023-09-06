@@ -1,4 +1,4 @@
-import express from "express";
+import express, { NextFunction } from "express";
 import cors from "cors";
 import { dbConnect } from "./config/database";
 import { environment } from "./config/environment";
