@@ -48,7 +48,9 @@ Its intended to be used as a template for future projects. as well as have many 
 
 - [Simple Express Server With Typescript](https://github.com/drabi-he/express-setup#simple-express-server-with-typescript)
 - [Adding Useful Services/Middleware](https://github.com/drabi-he/express-setup#adding-useful-servicesmiddleware)
-- [using mongodb with mongoose](https://github.com/drabi-he/express-setup/tree/mongodb#using-mongodb-with-mongoose)
+- [Access Token And Refresh Token](https://github.com/drabi-he/express-setup#access-token-and-refresh-token)
+- [Using Mongodb With Mongoose](https://github.com/drabi-he/express-setup/tree/mongodb#using-mongodb-with-mongoose)
+- [Authentication With JWT And Role Based Access Control](https://github.com/drabi-he/express-setup/tree/mongodb#authentication-with-jwt-and-role-based-access-control)
 
 - [Script](https://github.com/drabi-he/express-setup#script)
 
@@ -349,6 +351,109 @@ we can have a better logger if we combine them
     app.use(responseInfo);
 
 
+## Access Token And Refresh Token
+
+**1. add the following packages**
+
+    pnpm add jsonwebtoken bcryptjs @types/jsonwebtoken @types/bcryptjs
+
+**2. generate our secrets and update our `.env`**
+
+    echo "ACCESS_TOKEN_EXPIRES_IN=15" >> .env # access token expiration in minutes
+    echo "REFRESH_TOKEN_EXPIRES_IN=10080" >> .env # refresh token expiration in minutes
+    echo -n "ACCESS_TOKEN_PRIVATE_KEY=" >> .env
+    openssl genrsa -out tools/access_token.pem 2048 && cat tools/access_token.pem | base64 | tr -d '\n' >> .env # generate access token private key
+    echo >> .env
+    echo -n "ACCESS_TOKEN_PUBLIC_KEY=" >> .env
+    openssl rsa -in tools/access_token.pem -pubout -out tools/public_access.pem && cat tools/public_access.pem | base64 | tr -d '\n' >> .env # generate access token public key
+    echo >> .env
+    echo -n "REFRESH_TOKEN_PRIVATE_KEY=" >> .env
+    openssl genrsa -out tools/refresh_token.pem 2048 && cat tools/refresh_token.pem | base64 | tr -d '\n' >> .env # generate refresh token private key
+    echo >> .env
+    echo -n "REFRESH_TOKEN_PUBLIC_KEY=" >> .env
+    openssl rsa -in tools/refresh_token.pem -pubout -out tools/public_refresh.pem && cat tools/public_refresh.pem | base64 | tr -d '\n' >> .env # generate refresh token public key
+    echo >> .env
+
+**3. update our `environment.ts` file**
+
+    import { config } from "dotenv-safest";
+  
+    try {
+      config();
+    } catch (e: any) {
+      console.log({
+        message: "Error loading environment variables",
+        missing: e?.missing,
+      });
+      process.exit(1);
+    }
+  
+    export const environment: {
+      nodeEnv: string;
+      port: number;
+      accessTokenExpiresIn: number;
+      refreshTokenExpiresIn: number;
+      accessTokenPrivateKey: string;
+      refreshTokenPrivateKey: string;
+      accessTokenPublicKey: string;
+      refreshTokenPublicKey: string;
+    } = {
+      nodeEnv: process.env.NODE_ENV || "development",
+      port: parseInt(process.env.PORT || "3000"),
+      accessTokenExpiresIn: parseInt(process.env.ACCESS_TOKEN_EXPIRES_IN || "15"),
+      refreshTokenExpiresIn: parseInt(process.env.REFRESH_TOKEN_EXPIRES_IN || "60"),
+      accessTokenPrivateKey: process.env.ACCESS_TOKEN_PRIVATE_KEY || "",
+      refreshTokenPrivateKey: process.env.REFRESH_TOKEN_PRIVATE_KEY || "",
+      accessTokenPublicKey: process.env.ACCESS_TOKEN_PUBLIC_KEY || "",
+      refreshTokenPublicKey: process.env.REFRESH_TOKEN_PUBLIC_KEY || "",
+    };
+
+**4. create an `auth.ts` file in your `utils` folder**
+
+    touch src/utils/auth.ts
+
+**5. add the following to your `auth.ts` file**
+
+    import jwt, { SignOptions } from "jsonwebtoken"
+    import { Request } from "express";
+    import {environment} from "../config/environment"
+
+    export const signJWT = (
+      payload: Object,
+      key: "accessTokenPrivateKey" | "refreshTokenPrivateKey",
+      options: SignOptions = {}
+    ) => {
+      const privateKey = Buffer.from(environment[key], "base64").toString("ascii");
+      return jwt.sign(payload, privateKey, {
+        ...(options && options),
+        algorithm: "RS256"
+      });
+    }
+
+    export const verifyJWT = <T>(
+      token: string,
+      key: "accessTokenPublicKey" | "refreshTokenPublicKey"
+    ) => {
+      try {
+        const publicKey = Buffer.from(environment[key], "base64").toString("ascii");
+        return jwt.verify(token, publicKey) as T;
+      } catch (err) {
+        return null;
+      }
+    }
+
+    export const signToken = (id: any) => {
+      const accessToken = signJWT({ sub: id }, "accessTokenPrivateKey", {
+        expiresIn: `${environment.accessTokenExpiresIn}m`
+      });
+
+      const refreshToken = signJWT({ sub: id }, "refreshTokenPrivateKey", {
+        expiresIn: `${environment.refreshTokenExpiresIn}m`
+      });
+
+      return { accessToken, refreshToken };
+    }
+
 ## Using MongoDB With Mongoose
 
 **1. prepare your docker compose file**
@@ -476,6 +581,339 @@ we can have a better logger if we combine them
         logger.error(err);
         process.exit(1);
       });
+
+## Authentication With JWT And Role Based Access Control 
+
+**1. create a `user.ts` file in your `models` folder**
+
+    touch src/models/user.ts
+
+**2. add the following to your `user.ts` file**
+
+    import { Schema, model } from "mongoose";
+
+    export interface IUser {
+      username: string;
+      email: string;
+      password: string;
+      role: "user" | "admin";
+      refreshToken: string | null;
+      [...]
+    }
+
+    const userSchema = new Schema<IUser>({
+      username: { type: String, required: true, unique: true },
+      email: { type: String, required: true, unique: true },
+      password: { type: String, required: true },
+      role: { type: String, enum: ["user", "admin"], default: "user" },
+      refreshToken: { type: String, default: null },
+      [...]
+    });
+
+    export const User = model<IUser>("User", userSchema);
+
+**3. create a `check-existence.ts` file in your `middleware` folder**
+
+    touch src/middleware/check-existence.ts
+
+**4. add the following to your `check-existence.ts` file**
+
+    import { Request, Response, NextFunction } from "express";
+    import User from "../models/user";
+
+    export const checkExistence = async (req: Request, res: Response, next: NextFunction) => {
+      let user = await User.findOne({ email: req.body.email });
+
+      if (user) {
+        return res.status(400).json({status: "Error", message: "email already taken" });
+      }
+
+      user = await User.findOne({ username: req.body.username });
+
+      if (user) {
+        return res.status(400).json({status: "Error", message: "username already taken" });
+      }
+
+      next();
+    }
+
+**5. create a `access.ts` file in your `middleware` folder**
+
+    touch src/middleware/access.ts
+
+**6. add the following to your `access.ts` file**
+
+    import { Request, Response, NextFunction } from "express";
+    import { environment } from '../config/environment';
+    import User from "../models/user";
+
+    export const verifyToken = async (req: Request, res: Response, next: NextFunction) => {
+      let accessToken;
+
+      if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
+        accessToken = req.headers.authorization.split(" ")[1];
+      } else if (req.cookies && req.cookies.accessToken) {
+        accessToken = req.cookies.accessToken;
+      } else if (req.headers["x-access-token"]) {
+        accessToken = req.headers["x-access-token"];
+      }
+
+      if (!accessToken) {
+        return res.status(401).json({ status: "Error", message: "Access Token is required" });
+      }
+
+      const payload = verifyJWT<{ sub: string }>(accessToken, "accessTokenPublicKey");
+
+      if (!payload) {
+        return res.status(401).json({ status: "Error", message: "Invalid Access Token" });
+      }
+
+      const { sub: id } = payload;
+
+      const user = await User.findById(id);
+
+      if (!user) {
+        return res.status(401).json({ status: "Error", message: "Invalid Access Token" });
+      }
+
+      const { password, ...rest } = user;
+      req.user = rest;
+
+      next();
+    }
+
+    export const isAdmin = async (req: Request, res: Response, next: NextFunction) => {
+      if (req.user.role !== "admin") {
+        return res.status(403).json({ status: "Error", message: "Access Denied, Insufficient Privileges" });
+      }
+
+      next();
+    }
+
+**4. create a `auth.ts` file in your `routes` folder**
+
+    touch src/routes/auth.ts
+
+**5. add the following to your `auth.ts` file**
+
+    import { Router } from "express";
+    import User from "../models/user";
+    import { checkExistence } from "../middleware/check-existence";
+    import * as bcrypt from "bcryptjs";
+
+    const router = Router();
+
+    router.post("/sign-up",checkExistence, (req, res) => {
+      const { password, ...rest } = req.body;
+
+      const passwordHash = await bcrypt.hash(password, 10);
+
+      user = await User.create({
+        ...rest,
+        password: passwordHash,
+      });
+
+      const { accessToken, refreshToken } = signToken(user._id);
+
+      user.refreshToken = await bcrypt.hash(refreshToken, 10);
+      await user.save();
+
+      const { password, ...rest } = user;
+
+      res.status(201).json({
+        status: "Success",
+        message: "User Created Successfully",
+        data: {
+          user: rest,
+          accessToken,
+          refreshToken,
+        },
+      });
+    });
+
+    router.post("/sign-in", async (req, res) => {
+      const { email, password } = req.body;
+
+      const user = await User.findOne({ $or: [{ email }, { username: email }] });
+
+      if (!user || !(await bcrypt.compare(password, user.password))) {
+        return res.status(401).json({ status: "Error", message: "Invalid Credentials" });
+      }
+
+      const { accessToken, refreshToken } = signToken(user._id);
+
+      const { password, ...rest } = user;
+
+      res.status(200).json({
+        status: "Success",
+        message: "User Logged In Successfully",
+        data: {
+          user: rest,
+          accessToken,
+          refreshToken,
+        },
+      });
+    })
+
+    router.get("/sign-out", verifyToken, async (req, res) => {
+      const user = await User.findById(req.user._id);
+
+      if (!user) {
+        return res.status(404).json({ status: "Error", message: "user not found" });
+      }
+
+      user.refreshToken = null;
+      await user.save();
+
+      res.status(200).json({
+        status: "Success",
+        message: "User Logged Out Successfully",
+      });
+    });
+
+    router.get("/current-user", verifyToken, (req, res) => {
+      res.status(200).json({
+        status: "Success",
+        message: "User Found",
+        data: {
+          user: req.user,
+        },
+      });
+    });
+
+    router.get("/admin-route", verifyToken, isAdmin, (req, res) => {
+      res.status(200).json({
+        status: "Success",
+        message: "Admin Route",
+        data: {
+          user: req.user,
+        },
+      });
+    });
+
+    export default router;
+
+
+**6. create a `refresh.ts` file in you `utils` folder**
+
+    touch src/utils/refresh.ts
+
+**7. add the following to your `refresh.ts` file**
+
+      import { Request, Response } from "express";
+      import { verifyJWT, signToken } from "./auth";
+      import User from "../models/user";
+
+      export const refreshAccessToken = async (req: Request) {
+      let refreshToken;
+
+      if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
+        refreshToken = req.headers.authorization.split(" ")[1];
+      } else if (req.cookies && req.cookies.refreshToken) {
+        refreshToken = req.cookies.refreshToken;
+      } else if (req.headers["x-refresh-token"]) {
+        refreshToken = req.headers["x-refresh-token"];
+      }
+
+      if (!refreshToken) {
+        return null;
+      }
+
+      const decode = verifyJWT<{ sub: string }>(refreshToken, "refreshTokenPublicKey");
+
+      if (!decode) {
+        return null;
+      }
+
+      const { sub } = decode;
+
+      const user = await User.findById(sub);
+
+      if (!user || !(await bcrypt.compare(refreshToken, user.refreshToken))) {
+        return null;
+      }
+
+      const { accessToken, refreshToken: newRefreshToken } = signToken(user._id);
+
+      user.refreshToken = await bcrypt.hash(newRefreshToken, 10);
+
+      await user.save();
+
+      return { accessToken, refreshToken: newRefreshToken };
+    }
+
+**8. update your `auth.ts` file in your `router` folder**
+
+    router.get("/refresh-token", (req, res) => {
+      const { accessToken, refreshToken } = refreshAccessToken(req);
+
+      if (!accessToken || !refreshToken) {
+        return res.status(401).json({ status: "Error", message: "Invalid Refresh Token" });
+      }
+
+      res.status(200).json({
+        status: "Success",
+        message: "Token Refreshed Successfully",
+        data: {
+          accessToken,
+          refreshToken,
+        },
+      });
+    })
+
+**9. update your `main.ts` file**
+
+    [...]
+    import AuthRouter from "./routes/auth";
+    [...]
+
+    app.use("/api/auth", AuthRouter);
+      
+      [...]
+
+**10. test your routes using [Postman](https://www.postman.com/)**
+      
+      # sign up
+      POST http://localhost:3000/api/auth/sign-up
+      Content-Type: application/json
+  
+      {
+        "username": "username",
+        "email": "user@user.com",
+        "password": "password"
+      }
+
+      # sign in
+      POST http://localhost:3000/api/auth/sign-in
+      Content-Type: application/json
+  
+      {
+        "email": "user@user.com",
+        "password": "password"
+      }
+
+      # sign out
+      GET http://localhost:3000/api/auth/sign-out
+      Content-Type: application/json
+      Authorization: Bearer [access token]
+
+      # current user
+      GET http://localhost:3000/api/auth/current-user
+      Content-Type: application/json
+      Authorization: Bearer [access token]
+
+      # admin route
+      GET http://localhost:3000/api/auth/admin-route
+      Content-Type: application/json
+      Authorization: Bearer [access token]
+
+      # refresh token
+      GET http://localhost:3000/api/auth/refresh-token
+      Content-Type: application/json
+      Authorization: Bearer [refresh token]
+
+congratulations you have created your first express server with typescript and mongodb with mongoose and authentication with jwt and role based access control. you can now use this as a template for future projects.
+
 
 ## Script
 
