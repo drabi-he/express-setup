@@ -9,10 +9,9 @@ Its intended to be used as a template for future projects. as well as have many 
 
 - `NodeJS`
 - NPM or Yarn or `PNPM` (I use PNPM)
-- Docker & Docker Compose 
+- Docker & Docker Compose
 
 ## Project Structure
-
 
     -- [folder name]\ (i usually choose backend or server)
       -- tools\ (contain your scripts certificates ... )
@@ -33,32 +32,29 @@ Its intended to be used as a template for future projects. as well as have many 
         -- [...]
       -- [...]
 
-
 > :warning: **Your `tools` Folder And `.env` file may contain very sensitive information so you should always add them to your `.gitignore` file**
 
 ## Useful commands
 
 - `pnpm init`: initialize a new project (you can use `npm init` or `yarn init` if you don't use `pnpm`)
-- `pnpm add [package name]`: add a package to your project  (you can use `npm install [package name]` or `yarn add [package name]` if you don't use `pnpm`)
-- `pnpm add -D [package name]`: add a dev dependency to your project  (you can use `npm install -D [package name]` or `yarn add -D [package name]` if you don't use `pnpm`)
+- `pnpm add [package name]`: add a package to your project (you can use `npm install [package name]` or `yarn add [package name]` if you don't use `pnpm`)
+- `pnpm add -D [package name]`: add a dev dependency to your project (you can use `npm install -D [package name]` or `yarn add -D [package name]` if you don't use `pnpm`)
 - `pnpm run [script name]`: run a script from your `package.json` file (you can use `npm run [script name]` or `yarn run [script name]` if you don't use `pnpm`)
-
 
 ## Table Of Contents
 
-- [Simple Express Server With Typescript](https://github.com/drabi-he/express-setup#simple-express-server-with-typescript)
-- [Adding Useful Services/Middleware](https://github.com/drabi-he/express-setup#adding-useful-servicesmiddleware)
-- [Access Token And Refresh Token](https://github.com/drabi-he/express-setup#access-token-and-refresh-token)
+- [Simple Express Server With Typescript](https://github.com/drabi-he/express-setup/tree/mongodb#simple-express-server-with-typescript)
+- [Adding Useful Services/Middleware](https://github.com/drabi-he/express-setup/tree/mongodb#adding-useful-servicesmiddleware)
+- [Access Token And Refresh Token](https://github.com/drabi-he/express-setup/tree/mongodb#access-token-and-refresh-token)
 - [Using Mongodb With Mongoose](https://github.com/drabi-he/express-setup/tree/mongodb#using-mongodb-with-mongoose)
 - [Authentication With JWT And Role Based Access Control](https://github.com/drabi-he/express-setup/tree/mongodb#authentication-with-jwt-and-role-based-access-control)
 
-- [Script](https://github.com/drabi-he/express-setup#script)
-
+- [Script](https://github.com/drabi-he/express-setup/tree/mongodb#script)
 
 ## Simple Express Server With Typescript
 
-**1. initialize a  new project**
-    
+**1. initialize a new project**
+
     mkdir backend && cd backend
 
     pnpm init
@@ -73,7 +69,7 @@ Its intended to be used as a template for future projects. as well as have many 
 
 **4. add dependencies/packages**
 
-    pnpm add express dotenv-safest cors**
+    pnpm add express dotenv-safest cors
 
 - `express`: is a web framework for nodejs that makes it easier to create a server and handle requests and responses
 - `dotenv-safest`: is a package that helps you load your environment variables from a `.env` file
@@ -87,7 +83,7 @@ Its intended to be used as a template for future projects. as well as have many 
 
 > :bulb: **check [npmjs.com](www.npmjs.com) to find if a package include a type Definition or not**
 
-> :bulb: **if you see `DT` beside it's name then it needs a type definition, if you see `TS` beside it's name then it's already included
+> :bulb: \*\*if you see `DT` beside it's name then it needs a type definition, if you see `TS` beside it's name then it's already included
 
 **6. setup typescript**
 
@@ -136,7 +132,7 @@ Its intended to be used as a template for future projects. as well as have many 
 **16. add the following to your `environment.ts` file**
 
     import { config } from "dotenv-safest";
-  
+
     try {
       config();
     } catch (e: any) {
@@ -146,7 +142,7 @@ Its intended to be used as a template for future projects. as well as have many 
       });
       process.exit(1);
     }
-  
+
     export const environment: {
       nodeEnv: string;
       port: number;
@@ -177,7 +173,7 @@ Its intended to be used as a template for future projects. as well as have many 
     });
 
 **18. run your server**
-  
+
     pnpm run dev
 
 congratulations you have created your first express server with typescript
@@ -265,7 +261,7 @@ this way you can directly add image to your user without having to create a new 
 
 **2. create a `logger.ts` file in your `config` folder**
 
-    touch src/config/logger.ts # if it doesn't exist
+    touch src/config/logger.ts
 
 **3. add the following to your `logger.ts` file**
 
@@ -301,11 +297,12 @@ this way you can directly add image to your user without having to create a new 
 
 **1. add the following packages**
 
-    pnpm add morgan @types/morgan
+    pnpm add morgan
+    pnpm add -D @types/morgan
 
 **2. create a `logger.ts` file in your `config` folder**
 
-    touch src/config/logger.ts
+    touch src/config/logger.ts # if it doesn't exist
 
 **3. add the following to your `logger.ts` file**
 
@@ -325,7 +322,7 @@ we can have a better logger if we combine them
 
     const stream = {
       write: (message: string) => {
-        const status = parseInt(message.split(" ")[2]);
+        const status = parseInt(message.split(" ")[4]);
         if (status >= 400) logger.error(message.trim());
         else logger.info(message.trim());
       }
@@ -337,7 +334,7 @@ we can have a better logger if we combine them
     )
 
     export const responseInfo = morgan(
-      "[:remote-addr] Completed :status :res[content-length] in :response-time ms",
+      "[:remote-addr] Completed :method :url :status :res[content-length] in :response-time ms",
       { stream }
     )
 
@@ -349,7 +346,6 @@ we can have a better logger if we combine them
 
     app.use(requestInfo);
     app.use(responseInfo);
-
 
 ## Access Token And Refresh Token
 
@@ -374,10 +370,19 @@ we can have a better logger if we combine them
     openssl rsa -in tools/refresh_token.pem -pubout -out tools/public_refresh.pem && cat tools/public_refresh.pem | base64 | tr -d '\n' >> .env # generate refresh token public key
     echo >> .env
 
-**3. update our `environment.ts` file**
+**3. update our `.env.example` file**
+
+    NODE_ENV=
+    PORT=
+    ACCESS_TOKEN_PRIVATE_KEY=
+    ACCESS_TOKEN_PUBLIC_KEY=
+    REFRESH_TOKEN_PRIVATE_KEY=
+    REFRESH_TOKEN_PUBLIC_KEY=
+
+**4. update our `environment.ts` file**
 
     import { config } from "dotenv-safest";
-  
+
     try {
       config();
     } catch (e: any) {
@@ -387,7 +392,7 @@ we can have a better logger if we combine them
       });
       process.exit(1);
     }
-  
+
     export const environment: {
       nodeEnv: string;
       port: number;
@@ -408,27 +413,34 @@ we can have a better logger if we combine them
       refreshTokenPublicKey: process.env.REFRESH_TOKEN_PUBLIC_KEY || "",
     };
 
-**4. create an `auth.ts` file in your `utils` folder**
+**5. create an `auth.ts` file in your `utils` folder**
 
     touch src/utils/auth.ts
 
-**5. add the following to your `auth.ts` file**
+**6. add the following to your `auth.ts` file**
 
     import jwt, { SignOptions } from "jsonwebtoken"
-    import { Request } from "express";
     import {environment} from "../config/environment"
+    import { logger } from "../config/logger";
 
     export const signJWT = (
       payload: Object,
       key: "accessTokenPrivateKey" | "refreshTokenPrivateKey",
       options: SignOptions = {}
     ) => {
-      const privateKey = Buffer.from(environment[key], "base64").toString("ascii");
-      return jwt.sign(payload, privateKey, {
-        ...(options && options),
-        algorithm: "RS256"
-      });
-    }
+      try {
+        const privateKey = Buffer.from(environment[key], "base64").   toString(
+          "ascii"
+        );
+        return jwt.sign(payload, privateKey, {
+          ...(options && options),
+          algorithm: "RS256",
+        });
+      } catch (err) {
+        logger.error(err);
+        return null as any;
+      }
+    };
 
     export const verifyJWT = <T>(
       token: string,
@@ -438,6 +450,7 @@ we can have a better logger if we combine them
         const publicKey = Buffer.from(environment[key], "base64").toString("ascii");
         return jwt.verify(token, publicKey) as T;
       } catch (err) {
+        logger.error(err);
         return null;
       }
     }
@@ -486,7 +499,7 @@ we can have a better logger if we combine them
         environment:
           - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
           - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
-    
+
       mongo-express:
         image: mongo-express
         restart: always
@@ -514,7 +527,7 @@ we can have a better logger if we combine them
 **8. update your `config/environment.ts` file**
 
     import { config } from "dotenv-safest";
-  
+
     try {
       config();
     } catch (e: any) {
@@ -524,28 +537,40 @@ we can have a better logger if we combine them
       });
       process.exit(1);
     }
-  
+
     export const environment: {
       nodeEnv: string;
       port: number;
+      accessTokenExpiresIn: number;
+      refreshTokenExpiresIn: number;
+      accessTokenPrivateKey: string;
+      refreshTokenPrivateKey: string;
+      accessTokenPublicKey: string;
+      refreshTokenPublicKey: string;
       mongoUrl: string;
     } = {
       nodeEnv: process.env.NODE_ENV || "development",
       port: parseInt(process.env.PORT || "3000"),
+      accessTokenExpiresIn: parseInt(process.env.ACCESS_TOKEN_EXPIRES_IN || "15"),
+      refreshTokenExpiresIn: parseInt(process.env.REFRESH_TOKEN_EXPIRES_IN || "60"),
+      accessTokenPrivateKey: process.env.ACCESS_TOKEN_PRIVATE_KEY || "",
+      refreshTokenPrivateKey: process.env.REFRESH_TOKEN_PRIVATE_KEY || "",
+      accessTokenPublicKey: process.env.ACCESS_TOKEN_PUBLIC_KEY || "",
+      refreshTokenPublicKey: process.env.REFRESH_TOKEN_PUBLIC_KEY || "",
       mongoUrl: process.env.MONGO_URL || "",
     };
 
-**8. create a `database.ts` file in your `config` folder**
+**9. create a `database.ts` file in your `config` folder**
 
     touch src/config/database.ts
 
-**9. add the following to your `database.ts` file**
+**10. add the following to your `database.ts` file**
 
     import mongoose from "mongoose";
 
     export const dbConnect = mongoose.connect;
 
-**10. update your `main.ts` file**
+**11. update your `main.ts` file**
 
     import express from "express";
     import cors from "cors";
@@ -560,11 +585,7 @@ we can have a better logger if we combine them
     app.use(express.urlencoded({ extended: true }));
     app.use(requestInfo);
     app.use(responseInfo);
-
-    app.use((req, res, next) => {
-      logger.info(`${req.method} ${req.url}`);
-      next();
-    });
+    app.use("/uploads", express.static("uploads"));
 
     app.get("/", (req, res) => {
       res.send("Hello World");
@@ -582,7 +603,7 @@ we can have a better logger if we combine them
         process.exit(1);
       });
 
-## Authentication With JWT And Role Based Access Control 
+## Authentication With JWT And Role Based Access Control
 
 **1. create a `user.ts` file in your `models` folder**
 
@@ -610,7 +631,9 @@ we can have a better logger if we combine them
       [...]
     });
 
-    export const User = model<IUser>("User", userSchema);
+    const UserModel = model<IUser>("User", userSchema);
+
+    export default UserModel;
 
 **3. create a `check-existence.ts` file in your `middleware` folder**
 
@@ -620,6 +643,7 @@ we can have a better logger if we combine them
 
     import { Request, Response, NextFunction } from "express";
     import User from "../models/user";
+
 
     export const checkExistence = async (req: Request, res: Response, next: NextFunction) => {
       let user = await User.findOne({ email: req.body.email });
@@ -643,11 +667,12 @@ we can have a better logger if we combine them
 
 **6. add the following to your `access.ts` file**
 
-    import { Request, Response, NextFunction } from "express";
-    import { environment } from '../config/environment';
+    import { Response, NextFunction } from "express";
     import User from "../models/user";
+    import { verifyJWT } from "../utils/auth";
 
-    export const verifyToken = async (req: Request, res: Response, next: NextFunction) => {
+
+    export const verifyToken = async (req: any, res: Response, next: NextFunction) => {
       let accessToken;
 
       if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
@@ -676,13 +701,12 @@ we can have a better logger if we combine them
         return res.status(401).json({ status: "Error", message: "Invalid Access Token" });
       }
 
-      const { password, ...rest } = user;
-      req.user = rest;
+      req.user = user;
 
       next();
     }
 
-    export const isAdmin = async (req: Request, res: Response, next: NextFunction) => {
+    export const isAdmin = async (req: any, res: Response, next: NextFunction) => {
       if (req.user.role !== "admin") {
         return res.status(403).json({ status: "Error", message: "Access Denied, Insufficient Privileges" });
       }
@@ -700,62 +724,78 @@ we can have a better logger if we combine them
     import User from "../models/user";
     import { checkExistence } from "../middleware/check-existence";
     import * as bcrypt from "bcryptjs";
+    import { verifyToken, isAdmin } from "../middleware/access";
+    import { signToken } from "../utils/auth";
+    import { refreshAccessToken } from "../utils/refresh";
+
 
     const router = Router();
 
-    router.post("/sign-up",checkExistence, (req, res) => {
-      const { password, ...rest } = req.body;
+    router.post("/sign-up",checkExistence, async (req, res) => {
+      try{
 
-      const passwordHash = await bcrypt.hash(password, 10);
+        const { password: hash, ...rest } = req.body;
 
-      user = await User.create({
-        ...rest,
-        password: passwordHash,
-      });
+        const passwordHash = await bcrypt.hash(hash, 10);
 
-      const { accessToken, refreshToken } = signToken(user._id);
+        const user = await User.create({
+          ...rest,
+          password: passwordHash,
+        });
 
-      user.refreshToken = await bcrypt.hash(refreshToken, 10);
-      await user.save();
+        const { accessToken, refreshToken } = signToken(user._id);
 
-      const { password, ...rest } = user;
+        user.refreshToken = await bcrypt.hash(refreshToken, 10);
+        await user.save();
 
-      res.status(201).json({
-        status: "Success",
-        message: "User Created Successfully",
-        data: {
-          user: rest,
-          accessToken,
-          refreshToken,
-        },
-      });
+
+        res.status(201).json({
+          status: "Success",
+          message: "User Created Successfully",
+          data: {
+            user: user,
+            accessToken,
+            refreshToken,
+          },
+        });
+      } catch (err) {
+        res.status(500).json({ status: "Error", message: err.message });
+      }
     });
 
     router.post("/sign-in", async (req, res) => {
-      const { email, password } = req.body;
+      try {
 
-      const user = await User.findOne({ $or: [{ email }, { username: email }] });
+        const { email, password: hash } = req.body;
 
-      if (!user || !(await bcrypt.compare(password, user.password))) {
-        return res.status(401).json({ status: "Error", message: "Invalid Credentials" });
+        const user = await User.findOne({ $or: [{ email }, { username: email }] });
+
+        if (!user || !(await bcrypt.compare(hash, user.password))) {
+          return res.status(401).json({ status: "Error", message: "Invalid Credentials" });
+        }
+
+        const { accessToken, refreshToken } = signToken(user._id);
+
+        user.refreshToken = await bcrypt.hash(refreshToken, 10);
+        await user.save();
+
+        res.status(200).json({
+          status: "Success",
+          message: "User Logged In Successfully",
+          data: {
+            user: user,
+            accessToken,
+            refreshToken,
+          },
+        });
+      } catch (err) {
+        res.status(500).json({ status: "Error", message: err.message });
       }
-
-      const { accessToken, refreshToken } = signToken(user._id);
-
-      const { password, ...rest } = user;
-
-      res.status(200).json({
-        status: "Success",
-        message: "User Logged In Successfully",
-        data: {
-          user: rest,
-          accessToken,
-          refreshToken,
-        },
-      });
     })
 
-    router.get("/sign-out", verifyToken, async (req, res) => {
+    router.get("/sign-out", verifyToken, async (req: any, res) => {
+      try {
+
       const user = await User.findById(req.user._id);
 
       if (!user) {
@@ -769,9 +809,17 @@ we can have a better logger if we combine them
         status: "Success",
         message: "User Logged Out Successfully",
       });
+      } catch (err) {
+        res.status(500).json({ status: "Error", message: err.message });
+      }
     });
 
-    router.get("/current-user", verifyToken, (req, res) => {
+    router.get("/current-user", verifyToken, (req: any, res) => {
+      const {_id} = req.user;
+
+      const user = await User.findById(_id);
+      if (!user)
+        return res.status(404).json({ status: "Error", message: "user not found" });
       res.status(200).json({
         status: "Success",
         message: "User Found",
@@ -781,7 +829,7 @@ we can have a better logger if we combine them
       });
     });
 
-    router.get("/admin-route", verifyToken, isAdmin, (req, res) => {
+    router.get("/admin-route", verifyToken, isAdmin, (req: any, res) => {
       res.status(200).json({
         status: "Success",
         message: "Admin Route",
@@ -793,7 +841,6 @@ we can have a better logger if we combine them
 
     export default router;
 
-
 **6. create a `refresh.ts` file in you `utils` folder**
 
     touch src/utils/refresh.ts
@@ -803,8 +850,10 @@ we can have a better logger if we combine them
       import { Request, Response } from "express";
       import { verifyJWT, signToken } from "./auth";
       import User from "../models/user";
+      import * as bcrypt from "bcryptjs";
 
-      export const refreshAccessToken = async (req: Request) {
+
+      export const refreshAccessToken = async (req: Request) => {
       let refreshToken;
 
       if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
@@ -816,21 +865,30 @@ we can have a better logger if we combine them
       }
 
       if (!refreshToken) {
-        return null;
+        return {
+          accessToken: null,
+          refreshToken: null,
+        };
       }
 
       const decode = verifyJWT<{ sub: string }>(refreshToken, "refreshTokenPublicKey");
 
       if (!decode) {
-        return null;
+        return {
+          accessToken: null,
+          refreshToken: null,
+        };
       }
 
       const { sub } = decode;
 
       const user = await User.findById(sub);
 
-      if (!user || !(await bcrypt.compare(refreshToken, user.refreshToken))) {
-        return null;
+      if (!user || !(await bcrypt.compare(refreshToken, user.refreshToken as string))) {
+        return {
+          accessToken: null,
+          refreshToken: null,
+        };
       }
 
       const { accessToken, refreshToken: newRefreshToken } = signToken(user._id);
@@ -844,8 +902,10 @@ we can have a better logger if we combine them
 
 **8. update your `auth.ts` file in your `router` folder**
 
-    router.get("/refresh-token", (req, res) => {
-      const { accessToken, refreshToken } = refreshAccessToken(req);
+    import { refreshAccessToken } from "../utils/refresh";
+
+    router.get("/refresh-token", async (req, res) => {
+      const { accessToken, refreshToken } = await refreshAccessToken(req);
 
       if (!accessToken || !refreshToken) {
         return res.status(401).json({ status: "Error", message: "Invalid Refresh Token" });
@@ -868,15 +928,15 @@ we can have a better logger if we combine them
     [...]
 
     app.use("/api/auth", AuthRouter);
-      
+
       [...]
 
 **10. test your routes using [Postman](https://www.postman.com/)**
-      
+
       # sign up
       POST http://localhost:3000/api/auth/sign-up
       Content-Type: application/json
-  
+
       {
         "username": "username",
         "email": "user@user.com",
@@ -886,7 +946,7 @@ we can have a better logger if we combine them
       # sign in
       POST http://localhost:3000/api/auth/sign-in
       Content-Type: application/json
-  
+
       {
         "email": "user@user.com",
         "password": "password"
@@ -914,10 +974,10 @@ we can have a better logger if we combine them
 
 congratulations you have created your first express server with typescript and mongodb with mongoose and authentication with jwt and role based access control. you can now use this as a template for future projects.
 
-
 ## Script
 
 > :bulb: **You Can Use This Command to help you setup the project**
+
 ```bash
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/drabi-he/express-setup/mongodb/setup.sh)"
 ```

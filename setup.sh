@@ -100,7 +100,7 @@ else
 fi
 
 
-packages="express dotenv-safest cors winston multer mongoose"
+packages="express dotenv-safest cors winston morgan multer mongoose jsonwebtoken bcryptjs"
 
 if "$manager" "$install" $packages ; then
   echo "$packages installed successfully"
@@ -111,7 +111,7 @@ else
 fi
 
 
-devPackages="typescript ts-node @types/node @types/express @types/cors nodemon concurrently morgan @types/morgan @types/multer"
+devPackages="typescript ts-node @types/node @types/express @types/cors nodemon concurrently @types/morgan @types/multer @types/jsonwebtoken @types/bcryptjs"
 
 
 # Package Dev Dependencies
@@ -132,8 +132,29 @@ else
   exit 1
 fi
 
+mkdir -p tools
+
 # Env Config
-if touch .env && echo "NODE_ENV=development" > .env && echo "PORT=3000" >> .env && echo "MONGO_INITDB_ROOT_USERNAME=admin" >> .env && echo "MONGO_INITDB_ROOT_PASSWORD=secret" >> .env && echo "MONGO_URL=mongodb://admin:secret@localhost:27017/mydb?authSource=admin" >> .env ; then
+if touch .env \
+&& echo "NODE_ENV=development" > .env \
+&& echo "PORT=3000" >> .env \
+&& echo "MONGO_INITDB_ROOT_USERNAME=admin" >> .env \
+&& echo "MONGO_INITDB_ROOT_PASSWORD=secret" >> .env \
+&& echo "MONGO_URL=mongodb://admin:secret@localhost:27017/mydb?authSource=admin"  >> .env\
+&& echo "ACCESS_TOKEN_EXPIRES_IN=15" >> .env \
+&& echo "REFRESH_TOKEN_EXPIRES_IN=10080" >> .env \
+&& echo -n "ACCESS_TOKEN_PRIVATE_KEY=" >> .env
+   openssl genrsa -out tools/access_token.pem 2048 && cat tools/access_token.pem | base64 | tr -d '\n' >> .env \
+   && echo >> .env\
+   && echo -n "ACCESS_TOKEN_PUBLIC_KEY=" >> .env
+   openssl rsa -in tools/access_token.pem -pubout -out tools/public_access.pem && cat tools/public_access.pem | base64 | tr -d '\n' >> .env\
+   && echo >> .env\
+   && echo -n "REFRESH_TOKEN_PRIVATE_KEY=" >> .env
+   openssl genrsa -out tools/refresh_token.pem 2048 && cat tools/refresh_token.pem | base64 | tr -d '\n' >> .env \
+   && echo >> .env\
+   && echo -n "REFRESH_TOKEN_PUBLIC_KEY=" >> .env
+   openssl rsa -in tools/refresh_token.pem -pubout -out tools/public_refresh.pem && cat tools/public_refresh.pem | base64 |tr -d '\n' >> .env \
+   && echo >> .env ; then
   echo ".env created successfully"
 else
   echo "Error: .env creation failed." >&2
@@ -142,7 +163,16 @@ else
 fi
 
 # Env Example Config
-if touch .env.example && echo "NODE_ENV=" > .env.example && echo "PORT=" >> .env.example && echo "MONGO_INITDB_ROOT_USERNAME=" >> .env.example && echo "MONGO_INITDB_ROOT_PASSWORD=" >> .env.example && echo "MONGO_URL=" >> .env.example; then
+if touch .env.example \
+&& echo "NODE_ENV=" > .env.example \
+&& echo "PORT=" >> .env.example \
+&& echo "MONGO_INITDB_ROOT_USERNAME=" >> .env.example \
+&& echo "MONGO_INITDB_ROOT_PASSWORD=" >> .env.example \
+&& echo "MONGO_URL=" >> .env.example\
+&& echo "ACCESS_TOKEN_PRIVATE_KEY=" >> .env.example\
+&& echo "ACCESS_TOKEN_PUBLIC_KEY=" >> .env.example\
+&& echo "REFRESH_TOKEN_PRIVATE_KEY=" >> .env.example\
+&& echo "REFRESH_TOKEN_PUBLIC_KEY=" >> .env.example ; then
   echo ".env.example created successfully"
 else
   echo "Error: .env.example creation failed." >&2
@@ -202,7 +232,7 @@ fi
 
 
 # Folder Structure
-mkdir -p src/config src/common src/middlewares src/models src/routes src/utils uploads
+mkdir -p src/config src/common src/middleware src/models src/routes src/utils uploads
 
 cd src
 
@@ -223,10 +253,22 @@ export const environment: {
   nodeEnv: string;
   port: number;
   mongoUrl: string;
+  accessTokenExpiresIn: number;
+  refreshTokenExpiresIn: number;
+  accessTokenPrivateKey: string;
+  refreshTokenPrivateKey: string;
+  accessTokenPublicKey: string;
+  refreshTokenPublicKey: string;
 } = {
   nodeEnv: process.env.NODE_ENV || "development",
   port: parseInt(process.env.PORT || "3000"),
   mongoUrl: process.env.MONGO_URL || "",
+  accessTokenExpiresIn: parseInt(process.env.ACCESS_TOKEN_EXPIRES_IN || "15"),
+  refreshTokenExpiresIn: parseInt(process.env.REFRESH_TOKEN_EXPIRES_IN || "60"),
+  accessTokenPrivateKey: process.env.ACCESS_TOKEN_PRIVATE_KEY || "",
+  refreshTokenPrivateKey: process.env.REFRESH_TOKEN_PRIVATE_KEY || "",
+  accessTokenPublicKey: process.env.ACCESS_TOKEN_PUBLIC_KEY || "",
+  refreshTokenPublicKey: process.env.REFRESH_TOKEN_PUBLIC_KEY || "",
 };' > config/environment.ts; then
   echo "config/environment.ts created successfully"
 else
@@ -282,7 +324,7 @@ if touch config/logger.ts && echo 'import morgan from "morgan";
 
     const stream = {
       write: (message: string) => {
-        const status = parseInt(message.split(" ")[2]);
+        const status = parseInt(message.split(" ")[4]);
         if (status >= 400) logger.error(message.trim());
         else logger.info(message.trim());
       }
@@ -294,7 +336,7 @@ if touch config/logger.ts && echo 'import morgan from "morgan";
     )
 
     export const responseInfo = morgan(
-      "[:remote-addr] Completed :status :method :url :res[content-length] in :response-time ms",
+      "[:remote-addr] Completed :method :url :status :method :url :res[content-length] in :response-time ms",
       { stream }
     )' > config/logger.ts; then
   echo "config/logger.ts created successfully"
@@ -307,12 +349,390 @@ fi
 # Database Config
 
 if touch config/database.ts && echo 'import mongoose from "mongoose";
-    import { environment } from "./environment";
 
     export const dbConnect = mongoose.connect;' > config/database.ts; then
   echo "config/database.ts created successfully"
 else
   echo "Error: config/database.ts creation failed." >&2
+    rm -rf ../"$name"
+  exit 1
+fi
+
+# Authentication utils
+
+if touch utils/auth.ts\
+&& echo 'import jwt, { SignOptions } from "jsonwebtoken"
+    import {environment} from "../config/environment"
+    import { logger } from "../config/logger";
+
+    export const signJWT = (
+      payload: Object,
+      key: "accessTokenPrivateKey" | "refreshTokenPrivateKey",
+      options: SignOptions = {}
+    ) => {
+      try {
+        const privateKey = Buffer.from(environment[key], "base64").   toString(
+          "ascii"
+        );
+        return jwt.sign(payload, privateKey, {
+          ...(options && options),
+          algorithm: "RS256",
+        });
+      } catch (err) {
+        logger.error(err);
+        return null as any;
+      }
+    };
+
+    export const verifyJWT = <T>(
+      token: string,
+      key: "accessTokenPublicKey" | "refreshTokenPublicKey"
+    ) => {
+      try {
+        const publicKey = Buffer.from(environment[key], "base64").toString("ascii");
+        return jwt.verify(token, publicKey) as T;
+      } catch (err) {
+        logger.error(err);
+        return null;
+      }
+    }
+
+    export const signToken = (id: any) => {
+      const accessToken = signJWT({ sub: id }, "accessTokenPrivateKey", {
+        expiresIn: `${environment.accessTokenExpiresIn}m`
+      });
+
+      const refreshToken = signJWT({ sub: id }, "refreshTokenPrivateKey", {
+        expiresIn: `${environment.refreshTokenExpiresIn}m`
+      });
+
+      return { accessToken, refreshToken };
+    }' > utils/auth.ts; then
+  echo "utils/auth.ts created successfully"
+else
+  echo "Error: utils/auth.ts creation failed." >&2
+    rm -rf ../"$name"
+  exit 1
+fi
+
+# User Model
+
+if touch models/user.ts\
+&& echo 'import { Schema, model } from "mongoose";
+
+    export interface IUser {
+      username: string;
+      email: string;
+      password: string;
+      role: "user" | "admin";
+      refreshToken: string | null;
+    }
+
+    const userSchema = new Schema<IUser>({
+      username: { type: String, required: true, unique: true },
+      email: { type: String, required: true, unique: true },
+      password: { type: String, required: true },
+      role: { type: String, enum: ["user", "admin"], default: "user" },
+      refreshToken: { type: String, default: null },
+    });
+
+    const UserModel = model<IUser>("User", userSchema);
+
+    export default UserModel;' > models/user.ts; then
+  echo "models/user.ts created successfully"
+else
+  echo "Error: models/user.ts creation failed." >&2
+    rm -rf ../"$name"
+  exit 1
+fi
+
+# Middlewares
+
+if touch middleware/check-existence.ts\
+&& echo 'import { Request, Response, NextFunction } from "express";
+    import User from "../models/user";
+
+
+    export const checkExistence = async (req: Request, res: Response, next: NextFunction) => {
+      let user = await User.findOne({ email: req.body.email });
+
+      if (user) {
+        return res.status(400).json({status: "Error", message: "email already taken" });
+      }
+
+      user = await User.findOne({ username: req.body.username });
+
+      if (user) {
+        return res.status(400).json({status: "Error", message: "username already taken" });
+      }
+
+      next();
+    }' > middleware/check-existence.ts; then
+  echo "middleware/check-existence.ts created successfully"
+else
+  echo "Error: middleware/check-existence.ts creation failed." >&2
+    rm -rf ../"$name"
+  exit 1
+fi
+
+if touch middleware/access.ts\
+&& echo 'import { Response, NextFunction } from "express";
+    import User from "../models/user";
+    import { verifyJWT } from "../utils/auth";
+
+
+    export const verifyToken = async (req: any, res: Response, next: NextFunction) => {
+      let accessToken;
+
+      if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
+        accessToken = req.headers.authorization.split(" ")[1];
+      } else if (req.cookies && req.cookies.accessToken) {
+        accessToken = req.cookies.accessToken;
+      } else if (req.headers["x-access-token"]) {
+        accessToken = req.headers["x-access-token"];
+      }
+
+      if (!accessToken) {
+        return res.status(401).json({ status: "Error", message: "Access Token is required" });
+      }
+
+      const payload = verifyJWT<{ sub: string }>(accessToken, "accessTokenPublicKey");
+
+      if (!payload) {
+        return res.status(401).json({ status: "Error", message: "Invalid Access Token" });
+      }
+
+      const { sub: id } = payload;
+
+      const user = await User.findById(id);
+
+      if (!user) {
+        return res.status(401).json({ status: "Error", message: "Invalid Access Token" });
+      }
+
+      req.user = user;
+
+      next();
+    }
+
+    export const isAdmin = async (req: any, res: Response, next: NextFunction) => {
+      if (req.user.role !== "admin") {
+        return res.status(403).json({ status: "Error", message: "Access Denied, Insufficient Privileges" });
+      }
+
+      next();
+    }' > middleware/access.ts; then
+  echo "middleware/access.ts created successfully"
+else
+  echo "Error: middleware/access.ts creation failed." >&2
+    rm -rf ../"$name"
+  exit 1
+fi
+
+# Routes
+
+if touch routes/auth.ts\
+&& echo 'import { Router } from "express";
+    import User from "../models/user";
+    import { checkExistence } from "../middleware/check-existence";
+    import * as bcrypt from "bcryptjs";
+    import { verifyToken, isAdmin } from "../middleware/access";
+    import { signToken } from "../utils/auth";
+    import { refreshAccessToken } from "../utils/refresh";
+
+    const router = Router();
+
+    router.post("/sign-up",checkExistence, async (req: any, res) => {
+      try{
+
+        const { password: hash, ...rest } = req.body;
+
+        const passwordHash = await bcrypt.hash(hash, 10);
+
+        const user = await User.create({
+          ...rest,
+          password: passwordHash,
+        });
+
+        const { accessToken, refreshToken } = signToken(user._id);
+
+        user.refreshToken = await bcrypt.hash(refreshToken, 10);
+        await user.save();
+
+        res.status(201).json({
+          status: "Success",
+          message: "User Created Successfully",
+          data: {
+            user: user,
+            accessToken,
+            refreshToken,
+          },
+        });
+      } catch (err: any) {
+        res.status(500).json({ status: "Error", message: err?.message });
+      }
+    });
+
+    router.post("/sign-in", async (req: any, res) => {
+      try {
+
+        const { email, password: hash } = req.body;
+
+        const user = await User.findOne({ $or: [{ email }, { username: email }] });
+
+        if (!user || !(await bcrypt.compare(hash, user.password))) {
+          return res.status(401).json({ status: "Error", message: "Invalid Credentials" });
+        }
+
+        const { accessToken, refreshToken } = signToken(user._id);
+
+        user.refreshToken = await bcrypt.hash(refreshToken, 10);
+        await user.save();
+
+        res.status(200).json({
+          status: "Success",
+          message: "User Logged In Successfully",
+          data: {
+            user: user,
+            accessToken,
+            refreshToken,
+          },
+        });
+      } catch (err: any) {
+        res.status(500).json({ status: "Error", message: err?.message });
+      }
+    })
+
+    router.get("/sign-out", verifyToken, async (req: any, res) => {
+      try {
+
+      const user = await User.findById(req.user._id);
+
+      if (!user) {
+        return res.status(404).json({ status: "Error", message: "user not found" });
+      }
+
+      user.refreshToken = null;
+      await user.save();
+
+      res.status(200).json({
+        status: "Success",
+        message: "User Logged Out Successfully",
+      });
+      } catch (err: any) {
+        res.status(500).json({ status: "Error", message: err?.message });
+      }
+    });
+
+    router.get("/current-user", verifyToken, async (req: any, res) => {
+
+      const {_id} = req.user;
+
+      const user = await User.findById(_id);
+      if (!user)
+        return res.status(404).json({ status: "Error", message: "user not found" });
+      res.status(200).json({
+        status: "Success",
+        message: "User Found",
+        data: {
+          user,
+        },
+      });
+    });
+
+    router.get("/refresh-token", async (req, res) => {
+      const { accessToken, refreshToken } = await refreshAccessToken(req);
+
+      if (!accessToken || !refreshToken) {
+        return res.status(401).json({ status: "Error", message: "Invalid Refresh Token" });
+      }
+
+      res.status(200).json({
+        status: "Success",
+        message: "Token Refreshed Successfully",
+        data: {
+          accessToken,
+          refreshToken,
+        },
+      });
+    })
+
+    router.get("/admin-route", verifyToken, isAdmin, (req: any, res) => {
+      res.status(200).json({
+        status: "Success",
+        message: "Admin Route",
+        data: {
+          user: req.user,
+        },
+      });
+    });
+
+    export default router;' > routes/auth.ts; then
+  echo "routes/auth.ts created successfully"
+else
+  echo "Error: routes/auth.ts creation failed." >&2
+    rm -rf ../"$name"
+  exit 1
+fi
+
+# Refresh Utils
+
+if touch utils/refresh.ts\
+&& echo 'import { Request, Response } from "express";
+      import { verifyJWT, signToken } from "./auth";
+      import User from "../models/user";
+      import * as bcrypt from "bcryptjs";
+
+
+      export const refreshAccessToken = async (req: Request) => {
+      let refreshToken;
+
+      if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
+        refreshToken = req.headers.authorization.split(" ")[1];
+      } else if (req.cookies && req.cookies.refreshToken) {
+        refreshToken = req.cookies.refreshToken;
+      } else if (req.headers["x-refresh-token"]) {
+        refreshToken = req.headers["x-refresh-token"];
+      }
+
+      if (!refreshToken) {
+        return {
+          accessToken: null,
+          refreshToken: null,
+        };
+      }
+
+      const decode = verifyJWT<{ sub: string }>(refreshToken, "refreshTokenPublicKey");
+
+      if (!decode) {
+        return {
+          accessToken: null,
+          refreshToken: null,
+        };
+      }
+
+      const { sub } = decode;
+
+      const user = await User.findById(sub);
+
+      if (!user || !(await bcrypt.compare(refreshToken, user.refreshToken as string))) {
+        return {
+          accessToken: null,
+          refreshToken: null,
+        };
+      }
+
+      const { accessToken, refreshToken: newRefreshToken } = signToken(user._id);
+
+      user.refreshToken = await bcrypt.hash(newRefreshToken, 10);
+
+      await user.save();
+
+      return { accessToken, refreshToken: newRefreshToken };
+    }' > utils/refresh.ts; then
+  echo "utils/refresh.ts created successfully"
+else
+  echo "Error: utils/refresh.ts creation failed." >&2
     rm -rf ../"$name"
   exit 1
 fi
@@ -324,6 +744,7 @@ if touch main.ts && echo 'import express from "express";
     import { environment } from "./config/environment";
     import { requestInfo, responseInfo, logger } from "./config/logger";
     import { upload } from "./config/multer";
+    import AuthRouter from "./routes/auth";
 
     const app = express();
 
@@ -340,8 +761,10 @@ if touch main.ts && echo 'import express from "express";
 
     app.post("/uploads", upload.single("file"), (req, res) => {
       res.send(`http://localhost:${environment.port}/${req.file?.filename}`);
-
     });
+
+    app.use("/api/auth", AuthRouter);
+
 
     dbConnect(environment.mongoUrl)
       .then(() => {
