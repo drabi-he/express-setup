@@ -12,7 +12,6 @@ Its intended to be used as a template for future projects. as well as have many 
 
 ## Project Structure
 
-
     -- [folder name]\ (i usually choose backend or server)
       -- tools\ (contain your scripts certificates ... )
       -- uploads\ (if you have any kind of upload service it would be best to direct all of them to this folder and make it static)
@@ -32,7 +31,6 @@ Its intended to be used as a template for future projects. as well as have many 
         -- [...]
       -- [...]
 
-
 > :warning: **Your `tools` Folder And `.env` file may contain very sensitive information so you should always add them to your `.gitignore` file**
 
 ## Useful commands
@@ -42,19 +40,19 @@ Its intended to be used as a template for future projects. as well as have many 
 - `pnpm add -D [package name]`: add a dev dependency to your project  (you can use `npm install -D [package name]` or `yarn add -D [package name]` if you don't use `pnpm`)
 - `pnpm run [script name]`: run a script from your `package.json` file (you can use `npm run [script name]` or `yarn run [script name]` if you don't use `pnpm`)
 
-
 ## Table Of Contents
 
 - [Simple Express Server With Typescript](https://github.com/drabi-he/express-setup#simple-express-server-with-typescript)
 - [Adding Useful Services/Middleware](https://github.com/drabi-he/express-setup#adding-useful-servicesmiddleware)
+- [Access Token And Refresh Token](https://github.com/drabi-he/express-setup#access-token-and-refresh-token)
 - [using mongodb with mongoose](https://github.com/drabi-he/express-setup/tree/mongodb#using-mongodb-with-mongoose)
-
+- [Authentication With JWT And Role Based Access Control](https://github.com/drabi-he/express-setup/tree/mongodb#authentication-with-jwt-and-role-based-access-control)
 - [Script](https://github.com/drabi-he/express-setup#script)
 
 ## Simple Express Server With Typescript
 
 **1. initialize a  new project**
-    
+
     mkdir backend && cd backend
 
     pnpm init
@@ -69,7 +67,7 @@ Its intended to be used as a template for future projects. as well as have many 
 
 **4. add dependencies/packages**
 
-    pnpm add express dotenv-safest cors**
+    pnpm add express dotenv-safest cors
 
 - `express`: is a web framework for nodejs that makes it easier to create a server and handle requests and responses
 - `dotenv-safest`: is a package that helps you load your environment variables from a `.env` file
@@ -261,7 +259,7 @@ this way you can directly add image to your user without having to create a new 
 
 **2. create a `logger.ts` file in your `config` folder**
 
-    touch src/config/logger.ts # if it doesn't exist
+    touch src/config/logger.ts
 
 **3. add the following to your `logger.ts` file**
 
@@ -297,11 +295,12 @@ this way you can directly add image to your user without having to create a new 
 
 **1. add the following packages**
 
-    pnpm add morgan @types/morgan
+    pnpm add morgan
+    pnpm add -D @types/morgan
 
 **2. create a `logger.ts` file in your `config` folder**
 
-    touch src/config/logger.ts
+    touch src/config/logger.ts # if it doesn't exist
 
 **3. add the following to your `logger.ts` file**
 
@@ -321,7 +320,7 @@ we can have a better logger if we combine them
 
     const stream = {
       write: (message: string) => {
-        const status = parseInt(message.split(" ")[2]);
+        const status = parseInt(message.split(" ")[4]);
         if (status >= 400) logger.error(message.trim());
         else logger.info(message.trim());
       }
@@ -333,7 +332,7 @@ we can have a better logger if we combine them
     )
 
     export const responseInfo = morgan(
-      "[:remote-addr] Completed :status :res[content-length] in :response-time ms",
+      "[:remote-addr] Completed :method :url :status :res[content-length] in :response-time ms",
       { stream }
     )
 
@@ -345,6 +344,128 @@ we can have a better logger if we combine them
 
     app.use(requestInfo);
     app.use(responseInfo);
+
+## Access Token And Refresh Token
+
+**1. add the following packages**
+
+    pnpm add jsonwebtoken bcryptjs @types/jsonwebtoken @types/bcryptjs
+
+**2. generate our secrets and update our `.env`**
+
+    echo "ACCESS_TOKEN_EXPIRES_IN=15" >> .env # access token expiration in minutes
+    echo "REFRESH_TOKEN_EXPIRES_IN=10080" >> .env # refresh token expiration in minutes
+    echo -n "ACCESS_TOKEN_PRIVATE_KEY=" >> .env
+    openssl genrsa -out tools/access_token.pem 2048 && cat tools/access_token.pem | base64 | tr -d '\n' >> .env # generate access token private key
+    echo >> .env
+    echo -n "ACCESS_TOKEN_PUBLIC_KEY=" >> .env
+    openssl rsa -in tools/access_token.pem -pubout -out tools/public_access.pem && cat tools/public_access.pem | base64 | tr -d '\n' >> .env # generate access token public key
+    echo >> .env
+    echo -n "REFRESH_TOKEN_PRIVATE_KEY=" >> .env
+    openssl genrsa -out tools/refresh_token.pem 2048 && cat tools/refresh_token.pem | base64 | tr -d '\n' >> .env # generate refresh token private key
+    echo >> .env
+    echo -n "REFRESH_TOKEN_PUBLIC_KEY=" >> .env
+    openssl rsa -in tools/refresh_token.pem -pubout -out tools/public_refresh.pem && cat tools/public_refresh.pem | base64 | tr -d '\n' >> .env # generate refresh token public key
+    echo >> .env
+
+**3. update our `.env.example` file**
+
+    NODE_ENV=
+    PORT=
+    ACCESS_TOKEN_PRIVATE_KEY=
+    ACCESS_TOKEN_PUBLIC_KEY=
+    REFRESH_TOKEN_PRIVATE_KEY=
+    REFRESH_TOKEN_PUBLIC_KEY=
+
+**4. update our `environment.ts` file**
+
+    import { config } from "dotenv-safest";
+
+    try {
+      config();
+    } catch (e: any) {
+      console.log({
+        message: "Error loading environment variables",
+        missing: e?.missing,
+      });
+      process.exit(1);
+    }
+
+    export const environment: {
+      nodeEnv: string;
+      port: number;
+      accessTokenExpiresIn: number;
+      refreshTokenExpiresIn: number;
+      accessTokenPrivateKey: string;
+      refreshTokenPrivateKey: string;
+      accessTokenPublicKey: string;
+      refreshTokenPublicKey: string;
+    } = {
+      nodeEnv: process.env.NODE_ENV || "development",
+      port: parseInt(process.env.PORT || "3000"),
+      accessTokenExpiresIn: parseInt(process.env.ACCESS_TOKEN_EXPIRES_IN || "15"),
+      refreshTokenExpiresIn: parseInt(process.env.REFRESH_TOKEN_EXPIRES_IN || "60"),
+      accessTokenPrivateKey: process.env.ACCESS_TOKEN_PRIVATE_KEY || "",
+      refreshTokenPrivateKey: process.env.REFRESH_TOKEN_PRIVATE_KEY || "",
+      accessTokenPublicKey: process.env.ACCESS_TOKEN_PUBLIC_KEY || "",
+      refreshTokenPublicKey: process.env.REFRESH_TOKEN_PUBLIC_KEY || "",
+    };
+
+**5. create an `auth.ts` file in your `utils` folder**
+
+    touch src/utils/auth.ts
+
+**6. add the following to your `auth.ts` file**
+
+    import jwt, { SignOptions } from "jsonwebtoken"
+    import {environment} from "../config/environment"
+    import { logger } from "../config/logger";
+
+    export const signJWT = (
+      payload: Object,
+      key: "accessTokenPrivateKey" | "refreshTokenPrivateKey",
+      options: SignOptions = {}
+    ) => {
+      try {
+        const privateKey = Buffer.from(environment[key], "base64").   toString(
+          "ascii"
+        );
+        return jwt.sign(payload, privateKey, {
+          ...(options && options),
+          algorithm: "RS256",
+        });
+      } catch (err) {
+        logger.error(err);
+        return null as any;
+      }
+    };
+
+    export const verifyJWT = <T>(
+      token: string,
+      key: "accessTokenPublicKey" | "refreshTokenPublicKey"
+    ) => {
+      try {
+        const publicKey = Buffer.from(environment[key], "base64").toString("ascii");
+        return jwt.verify(token, publicKey) as T;
+      } catch (err) {
+        logger.error(err);
+        return null;
+      }
+    }
+
+    export const signToken = (id: any) => {
+      const accessToken = signJWT({ sub: id }, "accessTokenPrivateKey", {
+        expiresIn: `${environment.accessTokenExpiresIn}m`
+      });
+
+      const refreshToken = signJWT({ sub: id }, "refreshTokenPrivateKey", {
+        expiresIn: `${environment.refreshTokenExpiresIn}m`
+      });
+
+      return { accessToken, refreshToken };
+    }
+
+congratulations you have created finished all preparations for authentication, to see an example of how to use it check the [next section](https://github.com/drabi-he/express-setup/tree/mongodb#using-mongodb-with-mongoose)
 
 ## Script
 
