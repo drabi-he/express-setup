@@ -99,7 +99,7 @@ else
   install="add"
 fi
 
-packages="express dotenv-safest cors winston multer"
+packages="express dotenv-safest cors winston multer jsonwebtoken bcryptjs"
 
 if "$manager" "$install" $packages ; then
   echo "$packages installed successfully"
@@ -109,7 +109,7 @@ else
   exit 1
 fi
 
-devPackages="typescript ts-node @types/node @types/express @types/cors nodemon concurrently morgan @types/morgan @types/multer"
+devPackages="typescript ts-node @types/node @types/express @types/cors nodemon concurrently morgan @types/morgan @types/multer @types/jsonwebtoken @types/bcryptjs"
 
 # Package Dev Dependencies
 if "$manager" "$install" -D $devPackages; then
@@ -139,21 +139,43 @@ else
 fi
 
 # Env Config
-if touch .env && echo "NODE_ENV=development" > .env && echo "PORT=3000" >> .env; then
-  echo ".env created successfully"
+if touch .env \
+&& echo "NODE_ENV=development" > .env \
+&& echo "PORT=3000" >> .env \
+&& echo "ACCESS_TOKEN_EXPIRES_IN=15" >> .env \
+&& echo "REFRESH_TOKEN_EXPIRES_IN=10080" >> .env \
+&& echo -n "ACCESS_TOKEN_PRIVATE_KEY=" >> .env
+openssl genrsa -out tools/access_token.pem 2048 && cat tools/access_token.pem | base64 | tr -d '\n' >> .env \
+ && echo >> .env\
+ && echo -n "ACCESS_TOKEN_PUBLIC_KEY=" >> .env
+openssl rsa -in tools/access_token.pem -pubout -out tools/public_access.pem && cat tools/public_access.pem | base64 | tr -d '\n' >> .env\
+ && echo >> .env\
+ && echo -n "REFRESH_TOKEN_PRIVATE_KEY=" >> .env
+openssl genrsa -out tools/refresh_token.pem 2048 && cat tools/refresh_token.pem | base64 | tr -d '\n' >> .env \
+ && echo >> .env\
+ && echo -n "REFRESH_TOKEN_PUBLIC_KEY=" >> .env
+openssl rsa -in tools/refresh_token.pem -pubout -out tools/public_refresh.pem && cat tools/public_refresh.pem | base64 |tr -d '\n' >> .env \
+ && echo >> .env ; then
+echo ".env created successfully"
 else
-  echo "Error: .env creation failed." >&2
-    rm -rf ../"$name"
-  exit 1
+echo "Error: .env creation failed." >&2
+rm -rf ../"$name"
+exit 1
 fi
 
 # Env Example Config
-if touch .env.example && echo "NODE_ENV=" > .env.example && echo "PORT=" >> .env.example; then
-  echo ".env.example created successfully"
+if touch .env.example \
+&& echo "NODE_ENV=" > .env.example \
+&& echo "PORT=" >> .env.example \
+&& echo "ACCESS_TOKEN_PRIVATE_KEY=" >> .env.example\
+&& echo "ACCESS_TOKEN_PUBLIC_KEY=" >> .env.example\
+&& echo "REFRESH_TOKEN_PRIVATE_KEY=" >> .env.example\
+&& echo "REFRESH_TOKEN_PUBLIC_KEY=" >> .env.example ; then
+echo ".env.example created successfully"
 else
-  echo "Error: .env.example creation failed." >&2
-    rm -rf ../"$name"
-  exit 1
+echo "Error: .env.example creation failed." >&2
+rm -rf ../"$name"
+exit 1
 fi
 
 # Folder Structure
@@ -165,27 +187,39 @@ cd src
 if touch config/environment.ts && echo 'import { config } from "dotenv-safest";
 
 try {
-  config();
+config();
 } catch (e: any) {
-  console.log({
-    message: "Error loading environment variables",
-    missing: e?.missing,
-  });
-  process.exit(1);
+console.log({
+message: "Error loading environment variables",
+missing: e?.missing,
+});
+process.exit(1);
 }
 
 export const environment: {
-  nodeEnv: string;
-  port: number;
+nodeEnv: string;
+port: number;
+accessTokenExpiresIn: number;
+refreshTokenExpiresIn: number;
+accessTokenPrivateKey: string;
+refreshTokenPrivateKey: string;
+accessTokenPublicKey: string;
+refreshTokenPublicKey: string;
 } = {
-  nodeEnv: process.env.NODE_ENV || "development",
-  port: parseInt(process.env.PORT || "3000"),
+nodeEnv: process.env.NODE_ENV || "development",
+port: parseInt(process.env.PORT || "3000"),
+accessTokenExpiresIn: parseInt(process.env.ACCESS_TOKEN_EXPIRES_IN || "15"),
+refreshTokenExpiresIn: parseInt(process.env.REFRESH_TOKEN_EXPIRES_IN || "60"),
+accessTokenPrivateKey: process.env.ACCESS_TOKEN_PRIVATE_KEY || "",
+refreshTokenPrivateKey: process.env.REFRESH_TOKEN_PRIVATE_KEY || "",
+accessTokenPublicKey: process.env.ACCESS_TOKEN_PUBLIC_KEY || "",
+refreshTokenPublicKey: process.env.REFRESH_TOKEN_PUBLIC_KEY || "",
 };' > config/environment.ts; then
-  echo "config/environment.ts created successfully"
+echo "config/environment.ts created successfully"
 else
-  echo "Error: config/environment.ts creation failed." >&2
-    rm -rf ../"$name"
-  exit 1
+echo "Error: config/environment.ts creation failed." >&2
+rm -rf ../"$name"
+exit 1
 fi
 
 # Multer Config
@@ -213,7 +247,7 @@ fi
 
 # Logger Config
 if touch config/logger.ts && echo 'import morgan from "morgan";
-    import { createLogger, format, transports } from "winston";
+import { createLogger, format, transports } from "winston";
 
     export const logger = createLogger({
       level: "info",
@@ -235,7 +269,7 @@ if touch config/logger.ts && echo 'import morgan from "morgan";
 
     const stream = {
       write: (message: string) => {
-        const status = parseInt(message.split(" ")[2]);
+        const status = parseInt(message.split(" ")[4]);
         if (status >= 400) logger.error(message.trim());
         else logger.info(message.trim());
       }
@@ -247,14 +281,72 @@ if touch config/logger.ts && echo 'import morgan from "morgan";
     )
 
     export const responseInfo = morgan(
-      "[:remote-addr] Completed :status :method :url :res[content-length] in :response-time ms",
+      "[:remote-addr] Completed :method :url :status :method :url :res[content-length] in :response-time ms",
       { stream }
     )' > config/logger.ts; then
-  echo "config/logger.ts created successfully"
+
+echo "config/logger.ts created successfully"
 else
-  echo "Error: config/logger.ts creation failed." >&2
-    rm -rf ../"$name"
-  exit 1
+echo "Error: config/logger.ts creation failed." >&2
+rm -rf ../"$name"
+exit 1
+fi
+
+# Authentication utils
+if touch utils/auth.ts\
+&& echo 'import jwt, { SignOptions } from "jsonwebtoken"
+import {environment} from "../config/environment"
+import { logger } from "../config/logger";
+
+    export const signJWT = (
+      payload: Object,
+      key: "accessTokenPrivateKey" | "refreshTokenPrivateKey",
+      options: SignOptions = {}
+    ) => {
+      try {
+        const privateKey = Buffer.from(environment[key], "base64").   toString(
+          "ascii"
+        );
+        return jwt.sign(payload, privateKey, {
+          ...(options && options),
+          algorithm: "RS256",
+        });
+      } catch (err) {
+        logger.error(err);
+        return null as any;
+      }
+    };
+
+    export const verifyJWT = <T>(
+      token: string,
+      key: "accessTokenPublicKey" | "refreshTokenPublicKey"
+    ) => {
+      try {
+        const publicKey = Buffer.from(environment[key], "base64").toString("ascii");
+        return jwt.verify(token, publicKey) as T;
+      } catch (err) {
+        logger.error(err);
+        return null;
+      }
+    }
+
+    export const signToken = (id: any) => {
+      const accessToken = signJWT({ sub: id }, "accessTokenPrivateKey", {
+        expiresIn: `${environment.accessTokenExpiresIn}m`
+      });
+
+      const refreshToken = signJWT({ sub: id }, "refreshTokenPrivateKey", {
+        expiresIn: `${environment.refreshTokenExpiresIn}m`
+      });
+
+      return { accessToken, refreshToken };
+    }' > utils/auth.ts; then
+
+echo "utils/auth.ts created successfully"
+else
+echo "Error: utils/auth.ts creation failed." >&2
+rm -rf ../"$name"
+exit 1
 fi
 
 # Main File
