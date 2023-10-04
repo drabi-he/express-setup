@@ -1,0 +1,22 @@
+[2023-10-04 10:31:46:3146] error: [::1] Completed POST /api/sign-up 404 151 in 1.091 ms
+[2023-10-04 10:37:03:373] error: [::1] Completed POST /api/auth/sign-up 500 64 in 5.520 ms
+[2023-10-04 10:38:58:3858] error: [::1] Completed POST /api/auth/sign-up 500 64 in 5.296 ms
+[2023-10-04 11:59:33:5933] error: [::1] Completed POST /api/auth/sign-up 400 50 in 5.897 ms
+[2023-10-04 12:18:34:1834] error: [::1] Completed POST /api/auth/sign-in 401 50 in 1.828 ms
+[2023-10-04 12:18:46:1846] error: [::1] Completed POST /api/auth/sign-in 401 50 in 71.364 ms
+[2023-10-04 12:19:07:197] error: [::1] Completed POST /api/auth/sign-in 401 50 in 2.587 ms
+[2023-10-04 12:23:35:2335] error: [::1] Completed GET /api/auth/sign-out 401 55 in 1.252 ms
+[2023-10-04 12:25:52:2552] error: [::1] Completed GET /api/auth/current-user 404 45 in 9.499 ms
+[2023-10-04 12:26:20:2620] error: [::1] Completed GET /api/auth/current-user 404 45 in 2.560 ms
+[2023-10-04 12:26:25:2625] error: [::1] Completed GET /api/auth/current-user 404 45 in 3.325 ms
+[2023-10-04 12:30:43:3043] error: [::1] Completed GET /api/auth/admin-route 403 69 in 7.958 ms
+[2023-10-04 12:30:58:3058] error: [::1] Completed GET /api/auth/owner-route 403 69 in 2.255 ms
+[2023-10-04 12:31:05:315] error: [::1] Completed GET /api/auth/supervisor-route 403 69 in 2.014 ms
+[2023-10-04 12:31:24:3124] error: [::1] Completed GET /api/auth/supervisor-route 403 69 in 3.811 ms
+[2023-10-04 12:31:57:3157] error: [::1] Completed POST /api/auth/sign-in 401 50 in 1.614 ms
+[2023-10-04 12:33:24:3324] error: [::1] Completed GET /api/auth/owner-route 403 69 in 3.065 ms
+[2023-10-04 12:34:00:340] error: [::1] Completed GET /api/auth/admin-route 403 69 in 3.314 ms
+[2023-10-04 12:34:39:3439] error: [::1] Completed POST /api/auth/sign-up 500 75 in 70.486 ms
+[2023-10-04 12:41:26:4126] error: invalid signature
+[2023-10-04 12:41:26:4126] error: [::1] Completed GET /api/auth/refresh-token 401 52 in 3.560 ms
+[2023-10-04 12:42:52:4252] error: [::1] Completed GET /api/auth/refresh-token 401 52 in 65.804 ms
